@@ -59,6 +59,10 @@ class FeishuTableStorage:
         }
         if ts_ms:
             fields["时间"] = ts_ms
+        if item.summary:
+            fields["摘要"] = item.summary
+        if item.tags:
+            fields["标签"] = [{"text": t} for t in item.tags]
         return {"fields": fields}
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
@@ -85,9 +89,17 @@ class FeishuTableStorage:
             ("新闻链接", 15, None),
             ("发布者", 1, None),
             ("中文标题", 1, None),
+            ("摘要", 1, None),
             ("分类", 3, {"options": [
                 {"name": "融资"}, {"name": "产品"}, {"name": "落地"},
                 {"name": "人才"}, {"name": "供应链"}, {"name": "政策"}, {"name": "其他"},
+            ]}),
+            ("标签", 4, {"options": [
+                {"name": "融资"}, {"name": "产品发布"}, {"name": "落地场景"},
+                {"name": "人事变动"}, {"name": "供应链"}, {"name": "政策监管"},
+                {"name": "人形机器人"}, {"name": "灵巧手"}, {"name": "具身AI"},
+                {"name": "强化学习"}, {"name": "模仿学习"}, {"name": "基础模型"},
+                {"name": "中国"}, {"name": "海外"},
             ]}),
             ("相关性评分", 2, None),
         ]
