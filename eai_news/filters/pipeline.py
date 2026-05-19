@@ -15,9 +15,10 @@ class FilterPipeline:
         self._categorizer = Categorizer()
 
     def process(self, items: list[RawItem]) -> list[NewsItem]:
-        # 1. Deduplicate
+        # 1. Deduplicate (URL + title similarity)
         unique = self._dedup.filter(items)
-        logger.info(f"After dedup: {len(unique)}/{len(items)} items remain")
+        dropped_dedup = len(items) - len(unique)
+        logger.info(f"After dedup: {len(unique)}/{len(items)} remain ({dropped_dedup} dropped — URL or title duplicate)")
 
         accepted: list[NewsItem] = []
         rejected = 0

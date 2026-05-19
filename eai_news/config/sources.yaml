@@ -1,6 +1,7 @@
 # EAI 信息源配置
 # type: rss | twitter | youtube | weibo | web
 # importance: 1(低) - 5(高)，影响相关性评分
+# tier: 1=官方一手来源  2=垂类专业媒体/学术机构  3=综合媒体
 
 # ─────────────────────────────────────────
 # RSS 信息源
@@ -10,41 +11,49 @@ rss:
     name: "BAIR Blog"
     url: "https://bair.berkeley.edu/blog/feed.xml"
     importance: 5
+    tier: 2
 
   - id: nvidia_dev_blog
     name: "NVIDIA Developer Blog"
     url: "https://developer.nvidia.com/blog/feed/"
     importance: 4
+    tier: 2
 
   - id: techcrunch_robotics
     name: "TechCrunch Robotics"
     url: "https://techcrunch.com/tag/robotics/feed/"
     importance: 3
+    tier: 2
 
   - id: venturebeat_ai
     name: "VentureBeat AI"
     url: "https://venturebeat.com/category/ai/feed/"
     importance: 3
+    tier: 3
 
   - id: deepmind_blog
     name: "Google DeepMind Blog"
     url: "https://deepmind.google/blog/rss.xml"
     importance: 5
+    tier: 1
 
   - id: 36kr_robotics
     name: "36氪 机器人"
     url: "https://36kr.com/feed"
     importance: 4
+    tier: 3
 
   - id: qbitai
     name: "量子位"
     url: "https://www.qbitai.com/feed"
     importance: 4
+    tier: 2
 
   - id: hugging_face_blog
     name: "Hugging Face Blog"
     url: "https://huggingface.co/blog/feed.xml"
     importance: 3
+    tier: 3
 
 # ─────────────────────────────────────────
 # Twitter / X 账号
@@ -55,157 +64,188 @@ twitter:
     name: "Figure AI"
     handle: "figure_robot"
     importance: 5
+    tier: 1
 
   - id: tw_tesla_ai
     name: "Tesla AI"
     handle: "Tesla_AI"
     importance: 5
+    tier: 1
 
   - id: tw_1x_technologies
     name: "1X Technologies"
     handle: "1x_technologies"
     importance: 4
+    tier: 1
 
   - id: tw_agility_robotics
     name: "Agility Robotics"
     handle: "AgilityRobotics"
     importance: 4
+    tier: 1
 
   - id: tw_apptronik
     name: "Apptronik"
     handle: "Apptronik_Inc"
     importance: 4
+    tier: 1
 
   - id: tw_sanctuary_ai
     name: "Sanctuary AI"
     handle: "SanctuaryAIinc"
     importance: 4
+    tier: 1
 
   - id: tw_engineered_arts
     name: "Engineered Arts"
     handle: "engineeredarts"
     importance: 3
+    tier: 1
 
   - id: tw_physical_intelligence
     name: "Physical Intelligence"
     handle: "pi_robot_ai"
     importance: 5
+    tier: 1
 
   - id: tw_skild_ai
     name: "Skild AI"
     handle: "skild_ai"
     importance: 4
+    tier: 1
 
   - id: tw_covariant
     name: "Covariant"
     handle: "covariantai"
     importance: 4
+    tier: 1
 
   - id: tw_intrinsic
     name: "Intrinsic"
     handle: "intrinsic_ai"
     importance: 4
+    tier: 1
 
   - id: tw_google_deepmind
     name: "Google DeepMind"
     handle: "GoogleDeepMind"
     importance: 5
+    tier: 1
 
   - id: tw_unitree
     name: "Unitree Robotics"
     handle: "UnitreeRobotics"
     importance: 5
+    tier: 1
 
   - id: tw_shadow_robot
     name: "Shadow Robot"
     handle: "Shadow_Robot"
     importance: 3
+    tier: 1
 
   - id: tw_dexterity
     name: "Dexterity AI"
     handle: "DexterityAI"
     importance: 3
+    tier: 1
 
   - id: tw_righthand_robotics
     name: "RightHand Robotics"
     handle: "RightHandRobot"
     importance: 3
+    tier: 1
 
   # KOL 个人账号
   - id: tw_jim_fan
     name: "Jim Fan (NVIDIA)"
     handle: "DrJimFan"
     importance: 5
+    tier: 1
 
   - id: tw_sergey_levine
     name: "Sergey Levine"
     handle: "svlevine"
     importance: 5
+    tier: 1
 
   - id: tw_chelsea_finn
     name: "Chelsea Finn"
     handle: "chelseabfinn"
     importance: 5
+    tier: 1
 
   - id: tw_pieter_abbeel
     name: "Pieter Abbeel"
     handle: "pabbeel"
     importance: 5
+    tier: 1
 
   - id: tw_fei_fei_li
     name: "Fei-Fei Li"
     handle: "drfeifei"
     importance: 5
+    tier: 1
 
   - id: tw_chien_ming_huang
     name: "Chien-Ming Huang (Johns Hopkins)"
     handle: "chienminghuang"
     importance: 4
+    tier: 1
 
   - id: tw_russ_tedrake
     name: "Russ Tedrake"
     handle: "russtedrake"
     importance: 5
+    tier: 1
 
   - id: tw_yann_lecun
     name: "Yann LeCun"
     handle: "ylecun"
     importance: 4
+    tier: 1
 
   - id: tw_david_ha
     name: "David Ha"
     handle: "hardmaru"
     importance: 4
+    tier: 1
 
   - id: tw_andrej_karpathy
     name: "Andrej Karpathy"
     handle: "karpathy"
     importance: 5
+    tier: 1
 
   - id: tw_marc_raibert
     name: "Marc Raibert"
     handle: "marcraibertbd"
     importance: 4
+    tier: 1
 
   - id: tw_marco_hutter
     name: "Marco Hutter (ETH)"
     handle: "MarcoHutterETH"
     importance: 4
+    tier: 1
 
   - id: tw_siddhartha_srinivasa
     name: "Siddhartha Srinivasa (UW)"
     handle: "siddhuinfinity"
     importance: 4
+    tier: 1
 
   - id: tw_dieter_fox
     name: "Dieter Fox (NVIDIA)"
     handle: "dieter_fox"
     importance: 4
+    tier: 1
 
   - id: tw_ken_goldberg
     name: "Ken Goldberg"
     handle: "Ken_Goldberg"
     importance: 4
+    tier: 1
 
 # ─────────────────────────────────────────
 # YouTube 频道
@@ -215,31 +255,37 @@ youtube:
     name: "Figure AI"
     channel_id: "UCxxxxxx"    # 待补充真实 channel_id
     importance: 5
+    tier: 1
 
   - id: yt_boston_dynamics
     name: "Boston Dynamics"
     channel_id: "UC5DPCCmhuXHBMbzJhZK5jYg"
     importance: 4
+    tier: 1
 
   - id: yt_agility_robotics
     name: "Agility Robotics"
     channel_id: "UCxxxxxx"
     importance: 4
+    tier: 1
 
   - id: yt_unitree
     name: "Unitree Robotics"
     channel_id: "UCxxxxxx"
     importance: 5
+    tier: 1
 
   - id: yt_google_deepmind
     name: "Google DeepMind"
     channel_id: "UCP7jMXSY2xbc3KCAE0MHQ-A"
     importance: 5
+    tier: 1
 
   - id: yt_nvidia_robotics
     name: "NVIDIA Robotics"
     channel_id: "UCxxxxxx"
     importance: 4
+    tier: 1
 
 # ─────────────────────────────────────────
 # 微博账号（中国公司）
@@ -249,36 +295,43 @@ weibo:
     name: "宇树科技"
     username: "unitreerobotics"
     importance: 5
+    tier: 1
 
   - id: wb_ubtech
     name: "优必选"
     username: "ubtechrobotics"
     importance: 4
+    tier: 1
 
   - id: wb_fourier
     name: "傅利叶智能"
     username: "fourier_intelligence"
     importance: 4
+    tier: 1
 
   - id: wb_zhiyuan
     name: "智元机器人"
     username: "zhiyuanrobot"
     importance: 5
+    tier: 1
 
   - id: wb_galbot
     name: "银河通用"
     username: "galbot_ai"
     importance: 4
+    tier: 1
 
   - id: wb_lejuu
     name: "乐聚机器人"
     username: "乐聚机器人"       # 待验证
     importance: 4
+    tier: 1
 
   - id: wb_agibot
     name: "自变量（AGIBOT）"
     username: "自变量机器人"      # 待验证
     importance: 4
+    tier: 1
 
 # ─────────────────────────────────────────
 # 网站爬虫（无 RSS 的公司官网 & 中文媒体）
@@ -290,36 +343,70 @@ web:
     url: "https://www.figure.ai/news"
     article_selector: "a[href*='/news/']"
     importance: 5
+    tier: 1
 
   - id: web_physical_intelligence
     name: "Physical Intelligence Blog"
     url: "https://www.physicalintelligence.company/blog"
     article_selector: "a[href*='/blog/']"
     importance: 5
+    tier: 1
 
   - id: web_1x_tech
     name: "1X Technologies"
     url: "https://www.1x.tech/discover"
     article_selector: "a[href*='/discover/']"
     importance: 4
+    tier: 1
 
   - id: web_apptronik
     name: "Apptronik Press"
     url: "https://apptronik.com/press-release"
     article_selector: "a[href*='/news-collection/']"
     importance: 4
+    tier: 1
 
   - id: web_fourier
     name: "傅利叶智能官网"
     url: "https://fftai.com/newsroom"
     article_selector: "a[href*='/newsroom']"
     importance: 4
+    tier: 1
 
   - id: web_sanctuary_ai
     name: "Sanctuary AI News"
     url: "https://www.sanctuaryai.com/news"
     article_selector: "a[href*='/news/']"
     importance: 4
+    tier: 1
+
+  - id: web_engineered_arts
+    name: "Engineered Arts News"
+    url: "https://www.engineeredarts.co.uk/blog/"
+    article_selector: "a[href*='/blog/']"
+    importance: 3
+    tier: 1
+
+  - id: web_skild_ai
+    name: "Skild AI Blog"
+    url: "https://www.skild.ai/blog"
+    article_selector: "a[href*='/blog/']"
+    importance: 4
+    tier: 1
+
+  - id: web_righthand_robotics
+    name: "RightHand Robotics News"
+    url: "https://www.righthandrobotics.com/news"
+    article_selector: "a[href*='/news']"
+    importance: 3
+    tier: 1
+
+  - id: web_schunk
+    name: "SCHUNK News"
+    url: "https://schunk.com/us/en/news/"
+    article_selector: "a[href*='/news/']"
+    importance: 3
+    tier: 1
 
   # 中国公司官网
   - id: web_unitree
@@ -327,62 +414,42 @@ web:
     url: "https://www.unitree.com/news/"
     article_selector: "a[href*='/news/']"
     importance: 5
+    tier: 1
 
   - id: web_zhiyuan
     name: "智元机器人官网"
     url: "https://www.zhiyuan-robot.com/news"
     article_selector: "a[href*='/news']"
     importance: 5
+    tier: 1
 
-  # 海外公司官网（补充）
-  - id: web_engineered_arts
-    name: "Engineered Arts News"
-    url: "https://www.engineeredarts.co.uk/blog/"
-    article_selector: "a[href*='/blog/']"
-    importance: 3
-
-  - id: web_skild_ai
-    name: "Skild AI Blog"
-    url: "https://www.skild.ai/blog"
-    article_selector: "a[href*='/blog/']"
-    importance: 4
-
-  - id: web_righthand_robotics
-    name: "RightHand Robotics News"
-    url: "https://www.righthandrobotics.com/news"
-    article_selector: "a[href*='/news']"
-    importance: 3
-
-  - id: web_schunk
-    name: "SCHUNK News"
-    url: "https://schunk.com/us/en/news/"
-    article_selector: "a[href*='/news/']"
-    importance: 3
-
-  # 中国公司官网（补充）
   - id: web_lejuu
     name: "乐聚机器人官网"
     url: "https://www.lejurobot.com/news"
     article_selector: "a[href*='/news']"
     importance: 4
+    tier: 1
 
   - id: web_astribot
     name: "星动纪元官网"
     url: "https://www.astribot.com/news"
     article_selector: "a[href*='/news']"
     importance: 4
+    tier: 1
 
   - id: web_agibot
     name: "自变量（AGIBOT）官网"
     url: "https://agibot.com/news"
     article_selector: "a[href*='/news']"
     importance: 4
+    tier: 1
 
   - id: web_liberai
     name: "将闲科技 LiberAI"
     url: "https://www.liberai.cn/news"
     article_selector: "a[href*='/news']"
     importance: 3
+    tier: 1
 
   # 学术实验室
   - id: web_mit_csail
@@ -390,36 +457,42 @@ web:
     url: "https://www.csail.mit.edu/news"
     article_selector: "a[href*='/news/']"
     importance: 4
+    tier: 2
 
   - id: web_tri
     name: "Toyota Research Institute"
     url: "https://www.tri.global/news"
     article_selector: "a[href*='/news/']"
     importance: 4
+    tier: 2
 
   - id: web_cmu_ri
     name: "CMU Robotics Institute"
     url: "https://www.ri.cmu.edu/ri-news/"
     article_selector: "a[href*='/ri-news/']"
     importance: 4
+    tier: 2
 
   - id: web_eth_rsl
     name: "ETH Zurich RSL"
     url: "https://rsl.ethz.ch/news-and-events/news.html"
     article_selector: "a[href*='/news']"
     importance: 4
+    tier: 2
 
   - id: web_shlab
     name: "上海人工智能实验室"
     url: "https://www.shlab.org.cn/news"
     article_selector: "a[href*='/news']"
     importance: 4
+    tier: 2
 
   - id: web_baai
     name: "北京智源研究院"
     url: "https://www.baai.ac.cn/news.html"
     article_selector: "a[href*='/news']"
     importance: 4
+    tier: 2
 
   # 中文科技媒体
   - id: web_leiphone_robot
@@ -427,4 +500,4 @@ web:
     url: "https://www.leiphone.com/category/robot"
     article_selector: "a[href*='/news/']"
     importance: 3
-
+    tier: 3
