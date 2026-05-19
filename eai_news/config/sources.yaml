@@ -6,11 +6,6 @@
 # RSS 信息源
 # ─────────────────────────────────────────
 rss:
-  - id: arxiv_robotics
-    name: "arXiv Robotics"
-    url: "https://arxiv.org/rss/cs.RO"
-    importance: 3
-
   - id: bair_blog
     name: "BAIR Blog"
     url: "https://bair.berkeley.edu/blog/feed.xml"
