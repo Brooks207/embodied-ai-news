@@ -17,19 +17,26 @@ async def run_collection():
         # 1. Fetch raw items
         raw_items = await run_all_collectors()
 
-        # 2. Get existing IDs for dedup
+        # 2. Get existing IDs for dedup (last 30 days)
         db = get_db()
         existing_ids = await db.get_existing_raw_ids()
 
         # 3. Save all raw items (for audit trail)
-        for item in raw_items:
-            await db.save_raw_item(item)
+        await db.save_raw_items_batch(raw_items)
 
         # 4. Filter
         pipeline = FilterPipeline(existing_ids=existing_ids)
         news_items = pipeline.process(raw_items)
 
-        # 5. Save accepted items
+        # 5. LLM processing (translate + summarise + tag)
+        if news_items and settings.claude_configured:
+            from .processors.llm_processor import LLMProcessor
+            processor = LLMProcessor(api_key=settings.anthropic_api_key)
+            news_items = await processor.process(news_items)
+        elif news_items:
+            logger.warning("ANTHROPIC_API_KEY not set — skipping LLM processing")
+
+        # 6. Save accepted items
         await save_batch(news_items)
 
         logger.info(f"=== Collection done: {len(news_items)} new items saved ===")

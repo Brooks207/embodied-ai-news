@@ -61,8 +61,7 @@ async def save_batch(items: list[NewsItem]):
     if not items:
         return
     db = get_db()
-    for item in items:
-        await db.save_news_item(item)
+    await db.save_news_items_batch(items)
 
     backend = settings.storage_backend
     feishu = get_feishu()

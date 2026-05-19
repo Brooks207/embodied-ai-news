@@ -5,7 +5,7 @@ import yaml
 from loguru import logger
 
 from ..config.settings import settings
-from .base import BaseCollector
+from .base import BaseCollector, CollectorResult
 from .rss_collector import RSSCollector
 from .twitter_collector import TwitterCollector
 from .youtube_collector import YouTubeCollector
@@ -14,10 +14,11 @@ from .web_crawler import WebCrawler
 from ..models import RawItem
 
 _SOURCES_PATH = Path(__file__).parent.parent / "config" / "sources.yaml"
+_MAX_CONSECUTIVE_FAILURES = 3
+_consecutive_failures: dict[str, int] = {}
 
 
 def build_collectors() -> list[tuple[BaseCollector, int]]:
-    """Returns list of (collector, tier) tuples."""
     with open(_SOURCES_PATH) as f:
         cfg = yaml.safe_load(f)
 
@@ -60,12 +61,45 @@ def build_collectors() -> list[tuple[BaseCollector, int]]:
 
 async def run_all_collectors() -> list[RawItem]:
     collector_pairs = build_collectors()
-    tasks = [c.safe_fetch() for c, _ in collector_pairs]
-    results = await asyncio.gather(*tasks)
+
+    active: list[tuple[BaseCollector, int]] = []
+    skipped: list[str] = []
+    for c, tier in collector_pairs:
+        if _consecutive_failures.get(c.source_id, 0) >= _MAX_CONSECUTIVE_FAILURES:
+            skipped.append(c.source_name)
+        else:
+            active.append((c, tier))
+
+    if skipped:
+        logger.warning(f"Circuit-broken sources skipped ({len(skipped)}): {', '.join(skipped)}")
+
+    tasks = [c.safe_fetch() for c, _ in active]
+    results: list[CollectorResult] = await asyncio.gather(*tasks)
+
     all_items: list[RawItem] = []
-    for batch, (_, tier) in zip(results, collector_pairs):
-        for item in batch:
-            item.raw_metadata["tier"] = tier
-        all_items.extend(batch)
-    logger.info(f"Total raw items fetched: {len(all_items)}")
+    failed: list[str] = []
+
+    for result, (_, tier) in zip(results, active):
+        if result.ok:
+            _consecutive_failures[result.source_id] = 0
+            for item in result.items:
+                item.raw_metadata["tier"] = tier
+            all_items.extend(result.items)
+        else:
+            count = _consecutive_failures.get(result.source_id, 0) + 1
+            _consecutive_failures[result.source_id] = count
+            failed.append(f"{result.source_name} ({result.error})")
+            if count >= _MAX_CONSECUTIVE_FAILURES:
+                logger.error(
+                    f"[{result.source_name}] circuit open after {count} consecutive failures"
+                )
+
+    if failed:
+        logger.warning(f"Failed sources ({len(failed)}): {'; '.join(failed)}")
+
+    ok_count = len(active) - len(failed)
+    logger.info(
+        f"Total raw items: {len(all_items)} from {ok_count}/{len(active)} active sources"
+        + (f" | {len(skipped)} circuit-broken" if skipped else "")
+    )
     return all_items
