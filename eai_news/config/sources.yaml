@@ -81,10 +81,20 @@ twitter:
     handle: "SanctuaryAIinc"
     importance: 4
 
+  - id: tw_engineered_arts
+    name: "Engineered Arts"
+    handle: "engineeredarts"
+    importance: 3
+
   - id: tw_physical_intelligence
     name: "Physical Intelligence"
     handle: "pi_robot_ai"
     importance: 5
+
+  - id: tw_skild_ai
+    name: "Skild AI"
+    handle: "skild_ai"
+    importance: 4
 
   - id: tw_covariant
     name: "Covariant"
@@ -116,6 +126,11 @@ twitter:
     handle: "DexterityAI"
     importance: 3
 
+  - id: tw_righthand_robotics
+    name: "RightHand Robotics"
+    handle: "RightHandRobot"
+    importance: 3
+
   # KOL 个人账号
   - id: tw_jim_fan
     name: "Jim Fan (NVIDIA)"
@@ -141,6 +156,11 @@ twitter:
     name: "Fei-Fei Li"
     handle: "drfeifei"
     importance: 5
+
+  - id: tw_chien_ming_huang
+    name: "Chien-Ming Huang (Johns Hopkins)"
+    handle: "chienminghuang"
+    importance: 4
 
   - id: tw_russ_tedrake
     name: "Russ Tedrake"
@@ -170,6 +190,16 @@ twitter:
   - id: tw_marco_hutter
     name: "Marco Hutter (ETH)"
     handle: "MarcoHutterETH"
+    importance: 4
+
+  - id: tw_siddhartha_srinivasa
+    name: "Siddhartha Srinivasa (UW)"
+    handle: "siddhuinfinity"
+    importance: 4
+
+  - id: tw_dieter_fox
+    name: "Dieter Fox (NVIDIA)"
+    handle: "dieter_fox"
     importance: 4
 
   - id: tw_ken_goldberg
@@ -240,6 +270,16 @@ weibo:
     username: "galbot_ai"
     importance: 4
 
+  - id: wb_lejuu
+    name: "乐聚机器人"
+    username: "乐聚机器人"       # 待验证
+    importance: 4
+
+  - id: wb_agibot
+    name: "自变量（AGIBOT）"
+    username: "自变量机器人"      # 待验证
+    importance: 4
+
 # ─────────────────────────────────────────
 # 网站爬虫（无 RSS 的公司官网 & 中文媒体）
 # ─────────────────────────────────────────
@@ -293,6 +333,93 @@ web:
     url: "https://www.zhiyuan-robot.com/news"
     article_selector: "a[href*='/news']"
     importance: 5
+
+  # 海外公司官网（补充）
+  - id: web_engineered_arts
+    name: "Engineered Arts News"
+    url: "https://www.engineeredarts.co.uk/blog/"
+    article_selector: "a[href*='/blog/']"
+    importance: 3
+
+  - id: web_skild_ai
+    name: "Skild AI Blog"
+    url: "https://www.skild.ai/blog"
+    article_selector: "a[href*='/blog/']"
+    importance: 4
+
+  - id: web_righthand_robotics
+    name: "RightHand Robotics News"
+    url: "https://www.righthandrobotics.com/news"
+    article_selector: "a[href*='/news']"
+    importance: 3
+
+  - id: web_schunk
+    name: "SCHUNK News"
+    url: "https://schunk.com/us/en/news/"
+    article_selector: "a[href*='/news/']"
+    importance: 3
+
+  # 中国公司官网（补充）
+  - id: web_lejuu
+    name: "乐聚机器人官网"
+    url: "https://www.lejurobot.com/news"
+    article_selector: "a[href*='/news']"
+    importance: 4
+
+  - id: web_astribot
+    name: "星动纪元官网"
+    url: "https://www.astribot.com/news"
+    article_selector: "a[href*='/news']"
+    importance: 4
+
+  - id: web_agibot
+    name: "自变量（AGIBOT）官网"
+    url: "https://agibot.com/news"
+    article_selector: "a[href*='/news']"
+    importance: 4
+
+  - id: web_liberai
+    name: "将闲科技 LiberAI"
+    url: "https://www.liberai.cn/news"
+    article_selector: "a[href*='/news']"
+    importance: 3
+
+  # 学术实验室
+  - id: web_mit_csail
+    name: "MIT CSAIL News"
+    url: "https://www.csail.mit.edu/news"
+    article_selector: "a[href*='/news/']"
+    importance: 4
+
+  - id: web_tri
+    name: "Toyota Research Institute"
+    url: "https://www.tri.global/news"
+    article_selector: "a[href*='/news/']"
+    importance: 4
+
+  - id: web_cmu_ri
+    name: "CMU Robotics Institute"
+    url: "https://www.ri.cmu.edu/ri-news/"
+    article_selector: "a[href*='/ri-news/']"
+    importance: 4
+
+  - id: web_eth_rsl
+    name: "ETH Zurich RSL"
+    url: "https://rsl.ethz.ch/news-and-events/news.html"
+    article_selector: "a[href*='/news']"
+    importance: 4
+
+  - id: web_shlab
+    name: "上海人工智能实验室"
+    url: "https://www.shlab.org.cn/news"
+    article_selector: "a[href*='/news']"
+    importance: 4
+
+  - id: web_baai
+    name: "北京智源研究院"
+    url: "https://www.baai.ac.cn/news.html"
+    article_selector: "a[href*='/news']"
+    importance: 4
 
   # 中文科技媒体
   - id: web_leiphone_robot
