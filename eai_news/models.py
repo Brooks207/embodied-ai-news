@@ -64,3 +64,4 @@ class NewsItem(BaseModel):
     tags: list[str] = Field(default_factory=list)
     published_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    raw_content: str = ""             # 原文首段摘要，仅内存使用，不持久化

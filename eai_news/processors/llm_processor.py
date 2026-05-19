@@ -80,7 +80,7 @@ class LLMProcessor:
 
     async def _process_batch(self, items: list[NewsItem]) -> list[NewsItem]:
         payload = [
-            {"id": item.id, "title": item.title, "content": item.summary or ""}
+            {"id": item.id, "title": item.title, "content": item.raw_content}
             for item in items
         ]
         try:

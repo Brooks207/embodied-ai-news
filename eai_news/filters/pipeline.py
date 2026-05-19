@@ -9,6 +9,14 @@ from .relevance_scorer import RelevanceScorer
 from .categorizer import Categorizer
 
 
+def _first_para(text: str, max_chars: int = 200) -> str:
+    for line in text.split("\n"):
+        line = line.strip()
+        if line:
+            return line[:max_chars]
+    return ""
+
+
 def _is_stale(item: RawItem, max_age_hours: int) -> bool:
     if item.published_at is None:
         return False
@@ -63,6 +71,7 @@ class FilterPipeline:
                 relevance_score=score,
                 tags=[],
                 published_at=raw.published_at,
+                raw_content=_first_para(raw.content),
             )
             accepted.append(news_item)
 
