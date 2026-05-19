@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from loguru import logger
 
 from ..models import RawItem, NewsItem, ItemStatus
@@ -8,6 +9,16 @@ from .relevance_scorer import RelevanceScorer
 from .categorizer import Categorizer
 
 
+def _is_stale(item: RawItem, max_age_hours: int) -> bool:
+    if item.published_at is None:
+        return False
+    pub = item.published_at
+    if pub.tzinfo is None:
+        pub = pub.replace(tzinfo=timezone.utc)
+    age_hours = (datetime.now(timezone.utc) - pub).total_seconds() / 3600
+    return age_hours > max_age_hours
+
+
 class FilterPipeline:
     def __init__(self, existing_ids: set[str] | None = None):
         self._dedup = Deduplicator(existing_ids or set())
@@ -15,10 +26,19 @@ class FilterPipeline:
         self._categorizer = Categorizer()
 
     def process(self, items: list[RawItem]) -> list[NewsItem]:
-        # 1. Deduplicate (URL + title similarity)
-        unique = self._dedup.filter(items)
-        dropped_dedup = len(items) - len(unique)
-        logger.info(f"After dedup: {len(unique)}/{len(items)} remain ({dropped_dedup} dropped — URL or title duplicate)")
+        # 1. Recency filter — drop items older than max_age_hours
+        fresh = [i for i in items if not _is_stale(i, settings.max_age_hours)]
+        stale_count = len(items) - len(fresh)
+        if stale_count:
+            logger.info(
+                f"Recency filter: {stale_count} stale items dropped "
+                f"(>{settings.max_age_hours}h old), {len(fresh)} remain"
+            )
+
+        # 2. Deduplicate (URL + title similarity)
+        unique = self._dedup.filter(fresh)
+        dropped_dedup = len(fresh) - len(unique)
+        logger.info(f"After dedup: {len(unique)}/{len(fresh)} remain ({dropped_dedup} dropped — URL or title duplicate)")
 
         accepted: list[NewsItem] = []
         rejected = 0
@@ -37,8 +57,8 @@ class FilterPipeline:
                 source_name=raw.source_name,
                 url=raw.url,
                 title=raw.title,
-                title_zh=None,   # populated in Phase 3
-                summary="",      # populated in Phase 3
+                title_zh=None,
+                summary="",
                 category=category,
                 relevance_score=score,
                 tags=[],

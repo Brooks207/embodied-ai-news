@@ -34,6 +34,7 @@ class Settings(BaseSettings):
 
     # 筛选
     min_relevance_score: float = 5.0
+    max_age_hours: int = 72        # 超过此时效的条目直接丢弃；published_at=None 的放行
 
     # 调度
     collect_interval_hours: int = 2

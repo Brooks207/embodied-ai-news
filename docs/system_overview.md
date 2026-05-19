@@ -1,6 +1,6 @@
 # EAI 新闻自动化系统 — 技术流程说明
 
-> 文档版本：2026-05-19 v2
+> 文档版本：2026-05-19 v3
 > 项目路径：`/Users/blueye/Desktop/News`
 > GitHub：`https://github.com/Brooks207/embodied-ai-news`
 
@@ -12,6 +12,7 @@
 |------|------|---------|
 | v1 | 2026-05-19 | 初始版本 |
 | v2 | 2026-05-19 | 删除 arXiv；补充 20+ 新信源；加入信源 tier 体系；去重升级为两阶段；品类关键词扩充；调度从 APScheduler 改为系统 cron |
+| v3 | 2026-05-19 | 实现 Stage 3 LLM 处理（title_zh / summary / tags）；加入时效过滤（72h）；采集器熔断机制；批量写入 DB；飞书表格新增摘要与标签字段 |
 
 ---
 
@@ -20,8 +21,10 @@
 ```
 信息采集（多源并发）
     ↓
+时效过滤（丢弃 >72h 的条目，published_at=None 放行）
+    ↓
 两阶段去重
-    ├─ Stage 1：URL 哈希去重（跨批次）
+    ├─ Stage 1：URL 哈希去重（跨批次，查近 30 天 DB）
     └─ Stage 2：标题模糊去重（批次内，48h 窗口，tier 优先）
     ↓
 相关性粗筛（关键词评分 ≥ 5.0）
@@ -30,11 +33,16 @@
     ├─ Stage 1：关键词打分
     └─ Stage 2：LLM 兜底（仅得分全为 0 时触发）
     ↓
-存储（飞书多维表格 / Excel / SQLite）
+Stage 3：LLM 内容处理（Claude Haiku，批量 15 条/次，Prompt Cache）
+    ├─ title_zh：中文标题（≤30字）
+    ├─ summary：2句中文摘要（≤80字）
+    └─ tags：3-5 个标签（预设标签列表）
+    ↓
+存储（SQLite + 飞书多维表格 / Excel）
 ```
 
-**调度方式**：系统 cron，每天 10:00 自动触发一次完整流程。
-日志路径：`eai_news/data/logs/cron.log`
+**调度方式**：APScheduler，默认每 2 小时触发一次完整流程（可在 `.env` 调整 `COLLECT_INTERVAL_HOURS`）。
+日志路径：`eai_news/data/logs/eai_news_YYYY-MM-DD.log`
 
 ---
 
@@ -45,6 +53,10 @@
 信息源待办文档：`docs/sources_todo.md`
 
 所有采集器并发运行（`asyncio.gather`），单个采集器失败不影响其他源。
+
+### 熔断机制
+
+连续失败 3 次的信源自动跳过本次采集周期，并在日志中记录"circuit open"警告。成功一次后重置计数。
 
 ### Tier 定义
 
@@ -204,7 +216,23 @@
 
 ---
 
-## 三、去重机制
+## 三、时效过滤
+
+实现：`eai_news/filters/pipeline.py`，配置：`MAX_AGE_HOURS`（默认 72）
+
+在进入去重和相关性评分之前，先按发布时间过滤：
+
+| 条件 | 处理 |
+|------|------|
+| `published_at` 距今 ≤ 72h | 正常进入后续流程 |
+| `published_at` 距今 > 72h | 丢弃（爬虫抓到历史文章的情况） |
+| `published_at = None` | 放行（部分网站无法解析发布时间） |
+
+**72h 的理由：** 覆盖完整周末（周五晚→周一早约 60h），仍属当期新闻，不会把历史存档混入日报。可通过 `.env` 中的 `MAX_AGE_HOURS` 调整。
+
+---
+
+## 四、去重机制
 
 实现：`eai_news/filters/deduplicator.py`
 
@@ -212,7 +240,7 @@
 
 **Stage 1：URL 哈希去重（跨批次）**
 
-`RawItem.id` 为 URL 的 MD5 哈希。每次采集前从数据库加载已有 ID 集合，命中则丢弃，防止同一文章重复入库。
+`RawItem.id` 为 URL 的 MD5 哈希。每次采集前从数据库加载近 30 天的已有 ID 集合，命中则丢弃，防止同一文章重复入库。
 
 **Stage 2：标题模糊去重（批次内）**
 
@@ -230,7 +258,7 @@
 
 ---
 
-## 四、相关性粗筛
+## 五、相关性粗筛
 
 配置文件：`eai_news/config/filters.yaml`
 实现：`eai_news/filters/relevance_scorer.py`
@@ -276,7 +304,7 @@ sim2real / 仿真 / dataset / 数据集
 
 ---
 
-## 五、品类识别
+## 六、品类识别
 
 实现：`eai_news/filters/categorizer.py`
 
@@ -309,37 +337,86 @@ sim2real / 仿真 / dataset / 数据集
 
 此机制解决词库覆盖不足的问题，如公司使用 `unveil` `debut` `showcase` `reveal` 等高级词汇时仍能正确分类。
 
-### 产品品类关键词（v2 扩充）
+---
 
-```
-发布 / launch / launched / release / announce / unveiled / introduce /
-debut / showcase / reveal / present / demonstration /
-推出 / 亮相 / 首发 / 量产 / next-gen / new model / 迭代
+## 七、Stage 3：LLM 内容处理
+
+实现：`eai_news/processors/llm_processor.py`
+模型：`claude-haiku-4-5-20251001`（快速低成本结构化提取）
+
+通过关键词过滤的条目进入 LLM 处理阶段，填充以下字段：
+
+| 字段 | 说明 | 约束 |
+|------|------|------|
+| `title_zh` | 中文标题 | ≤30字，信息密度高 |
+| `summary` | 2句中文摘要 | ≤80字，聚焦"谁做了什么/融了多少" |
+| `tags` | 多选标签 | 3-5个，从预设列表选取 |
+
+**预设标签列表：** 融资、产品发布、落地场景、人事变动、供应链、政策监管、人形机器人、灵巧手、具身AI、强化学习、模仿学习、基础模型、中国、海外
+
+### 实现细节
+
+- **批量处理**：15条/次 API 调用，减少网络开销
+- **Prompt Cache**：系统 Prompt 标记 `cache_control: ephemeral`，同一周期内多批次调用复用缓存
+- **Tool Use**：强制 `tool_choice: any`，保证结构化输出（不会返回自由文本）
+- **错误隔离**：单批次 API 失败时返回原始条目（`title_zh=None`），不阻断整个流程；下次采集周期自动重试
+- **降级**：`ANTHROPIC_API_KEY` 未配置时跳过此阶段，记录 warning
+
+### 成本估算
+
+每条目约 150 token 输入，Haiku 价格 $0.25/MTok：
+- 每周期 30 条 × 2 批 ≈ $0.001
+- 每天 12 周期 ≈ **$0.012/天**
+
+### 补跑命令
+
+```bash
+python run.py --process-only   # 对 DB 中 title_zh=None 的条目重新跑 LLM
 ```
 
 ---
 
-## 六、存储
+## 八、存储
 
-| 后端 | 说明 |
-|------|------|
-| `feishu`（默认）| 写入飞书多维表格，可实时查看 |
-| `excel` | 写入本地 `eai_news/data/eai_news.xlsx` |
-| `both` | 同时写入飞书与 Excel |
-| SQLite | 所有原始条目始终写入本地 DB（去重与审计用）|
+### SQLite（本地，始终写入）
 
-通过 `.env` 中的 `STORAGE_BACKEND` 切换。
+路径：`eai_news/data/eai_news.db`
+所有 raw_items 和 news_items 均写入，用于去重、审计和补跑。
+写入方式：`executemany` 批量插入（每周期一次连接）。
+
+### 飞书多维表格
+
+写入字段：
+
+| 飞书字段 | 模型字段 | 类型 |
+|---------|---------|------|
+| 时间 | `published_at` | 日期 |
+| 中文标题 | `title_zh`（无则用原标题）| 文本 |
+| 摘要 | `summary` | 文本 |
+| 分类 | `category`（中文标签）| 单选 |
+| 标签 | `tags` | 多选 |
+| 相关性评分 | `relevance_score` | 数字 |
+| 发布者 | `source_name` | 文本 |
+| 新闻链接 | `url` | 超链接 |
+
+首次初始化字段：
+```bash
+python run.py --setup-feishu
+```
+
+### 存储后端切换
+
+通过 `.env` 中的 `STORAGE_BACKEND` 切换：`feishu`（默认）/ `excel` / `both`
 
 ---
 
-## 七、当前局限与后续规划
+## 九、当前局限与后续规划
 
 | 模块 | 现状 | 规划 |
 |------|------|------|
-| Phase 3 内容处理 | `title_zh` / `summary` / `tags` 字段均为空 | LLM 二次相关性判断 + 中文标题翻译 + 摘要生成 + 标签提取 |
 | YouTube channel_id | 4 个频道待补充真实 ID | 手动查找填入 |
 | 微博采集 | 依赖 Cookie，稳定性有限 | 待评估替代方案 |
 | 待调研信源 | 极佳视界、流形空间、千寻智能、无界动力等 4 家中国公司官网未知 | 人工查找 URL 后加入 |
 | 平台不支持 | LinkedIn / B站 / 小红书暂无采集器 | 长期规划 |
-| Phase 4 发布自动化 | 未实现 | 对接微信公众号、小红书等平台 API |
-| Phase 6 数据追踪 | 未实现 | 各平台数据回流与运营报表 |
+| Stage 4 发布自动化 | 未实现 | 对接微信公众号、小红书等平台 API |
+| Stage 6 数据追踪 | 未实现 | 各平台数据回流与运营报表 |
