@@ -1,6 +1,6 @@
 # EAI 新闻自动化系统 — 技术流程说明
 
-> 文档版本：2026-05-19 v3
+> 文档版本：2026-05-19 v4
 > 项目路径：`/Users/blueye/Desktop/News`
 > GitHub：`https://github.com/Brooks207/embodied-ai-news`
 
@@ -12,7 +12,8 @@
 |------|------|---------|
 | v1 | 2026-05-19 | 初始版本 |
 | v2 | 2026-05-19 | 删除 arXiv；补充 20+ 新信源；加入信源 tier 体系；去重升级为两阶段；品类关键词扩充；调度从 APScheduler 改为系统 cron |
-| v3 | 2026-05-19 | 实现 Stage 3 LLM 处理（title_zh / summary / tags）；加入时效过滤（72h）；采集器熔断机制；批量写入 DB；飞书表格新增摘要与标签字段 |
+| v3 | 2026-05-19 | 实现 Stage 3 LLM 处理（title_zh / summary）；加入时效过滤（72h）；采集器熔断机制；批量写入 DB；飞书表格新增摘要字段 |
+| v4 | 2026-05-19 | Stage 3 加入假阳性细筛（is_relevant）；修复 LLM 只读标题的 bug，现传入原文首段（≤200字符） |
 
 ---
 
@@ -344,29 +345,37 @@ sim2real / 仿真 / dataset / 数据集
 实现：`eai_news/processors/llm_processor.py`
 模型：`claude-haiku-4-5-20251001`（快速低成本结构化提取）
 
-通过关键词过滤的条目进入 LLM 处理阶段，填充以下字段：
+通过关键词过滤的条目进入 LLM 处理阶段，每条一次调用完成三件事：
 
 | 字段 | 说明 | 约束 |
 |------|------|------|
+| `is_relevant` | 假阳性细筛 | 关键词误命中（扫地机器人、智能投顾等）直接丢弃 |
 | `title_zh` | 中文标题 | ≤30字，信息密度高 |
 | `summary` | 2句中文摘要 | ≤80字，聚焦"谁做了什么/融了多少" |
-| `tags` | 多选标签 | 3-5个，从预设列表选取 |
 
-**预设标签列表：** 融资、产品发布、落地场景、人事变动、供应链、政策监管、人形机器人、灵巧手、具身AI、强化学习、模仿学习、基础模型、中国、海外
+### LLM 输入
+
+每条发送：
+- `title`：完整标题
+- `content`：原文首段，最多 200 字符（从 `RawItem.content` 截取；内容为空时传空字符串）
+
+### 假阳性细筛
+
+关键词粗筛存在误命中（如 robot vacuum、robo-advisor、传统工业机械臂）。LLM 读完首段后判断 `is_relevant`，`false` 的条目在保存前直接丢弃，日志记录 `False positive dropped`。不确定时倾向 `true`，避免漏掉边缘案例。
 
 ### 实现细节
 
-- **批量处理**：15条/次 API 调用，减少网络开销
-- **Prompt Cache**：系统 Prompt 标记 `cache_control: ephemeral`，同一周期内多批次调用复用缓存
-- **Tool Use**：强制 `tool_choice: any`，保证结构化输出（不会返回自由文本）
-- **错误隔离**：单批次 API 失败时返回原始条目（`title_zh=None`），不阻断整个流程；下次采集周期自动重试
-- **降级**：`ANTHROPIC_API_KEY` 未配置时跳过此阶段，记录 warning
+- **批量处理**：15条/次 API 调用
+- **Prompt Cache**：系统 Prompt 标记 `cache_control: ephemeral`，同一周期内多批次复用缓存
+- **Tool Use**：强制 `tool_choice: any`，保证结构化输出
+- **错误隔离**：单批次 API 失败时条目原样保留，下次周期重试
+- **降级**：`ANTHROPIC_API_KEY` 未配置时跳过此阶段
 
 ### 成本估算
 
-每条目约 150 token 输入，Haiku 价格 $0.25/MTok：
-- 每周期 30 条 × 2 批 ≈ $0.001
-- 每天 12 周期 ≈ **$0.012/天**
+每条目约 200 token 输入，Haiku 价格 $0.25/MTok：
+- 每周期 30 条 × 2 批 ≈ $0.0015
+- 每天 12 周期 ≈ **$0.018/天**
 
 ### 补跑命令
 
@@ -394,7 +403,6 @@ python run.py --process-only   # 对 DB 中 title_zh=None 的条目重新跑 LLM
 | 中文标题 | `title_zh`（无则用原标题）| 文本 |
 | 摘要 | `summary` | 文本 |
 | 分类 | `category`（中文标签）| 单选 |
-| 标签 | `tags` | 多选 |
 | 相关性评分 | `relevance_score` | 数字 |
 | 发布者 | `source_name` | 文本 |
 | 新闻链接 | `url` | 超链接 |
