@@ -40,13 +40,8 @@ _PROCESS_TOOL: dict = {
                             "type": "string",
                             "description": "2-sentence Chinese summary, ≤80 chars total",
                         },
-                        "tags": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": "3-5 tags from the allowed list",
-                        },
                     },
-                    "required": ["id", "title_zh", "summary", "tags"],
+                    "required": ["id", "title_zh", "summary"],
                 },
             }
         },
@@ -119,7 +114,6 @@ class LLMProcessor:
                 u = updates[item.id]
                 item.title_zh = u.get("title_zh") or None
                 item.summary = u.get("summary", item.summary)
-                item.tags = u.get("tags", item.tags)
             else:
                 logger.debug(f"No LLM result for item {item.id[:8]} ({item.title[:40]})")
 
