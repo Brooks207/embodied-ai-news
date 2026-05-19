@@ -1,0 +1,267 @@
+# 筛选与分类规则配置
+
+# ─────────────────────────────────────────
+# 核心相关性关键词（命中 +2.0 分）
+# ─────────────────────────────────────────
+core_keywords:
+  - "具身智能"
+  - "embodied ai"
+  - "embodied intelligence"
+  - "humanoid robot"
+  - "humanoid"
+  - "人形机器人"
+  - "robot learning"
+  - "foundation model"
+  - "manipulation"
+  - "locomotion"
+  - "dexterous"
+  - "灵巧手"
+  - "双臂"
+  - "bimanual"
+  - "whole body control"
+  - "全身控制"
+  - "imitation learning"
+  - "模仿学习"
+  - "reinforcement learning robotics"
+  - "robot policy"
+  - "legged robot"
+  - "足式机器人"
+  - "mobile manipulation"
+
+# 支持关键词（命中 +0.8 分）
+support_keywords:
+  - "robot"
+  - "robotics"
+  - "机器人"
+  - "actuator"
+  - "执行器"
+  - "sensor"
+  - "传感器"
+  - "end effector"
+  - "末端执行器"
+  - "autonomous"
+  - "自主"
+  - "teleoperation"
+  - "遥操作"
+  - "sim2real"
+  - "仿真"
+  - "dataset"
+  - "数据集"
+
+# ─────────────────────────────────────────
+# 各类别分类关键词
+# ─────────────────────────────────────────
+categories:
+  funding:
+    keywords:
+      - "融资"
+      - "投资"
+      - "funding"
+      - "raised"
+      - "investment"
+      - "series a"
+      - "series b"
+      - "series c"
+      - "series d"
+      - "million"
+      - "billion"
+      - "亿元"
+      - "亿美元"
+      - "估值"
+      - "valuation"
+      - "ipo"
+      - "上市"
+      - "并购"
+      - "acquisition"
+      - "merger"
+      - "天使轮"
+      - "pre-a"
+      - "种子轮"
+      - "战略融资"
+    weight: 1.0
+
+  product:
+    keywords:
+      - "发布"
+      - "launch"
+      - "launched"
+      - "release"
+      - "released"
+      - "announce"
+      - "announced"
+      - "unveil"
+      - "unveiled"
+      - "introduce"
+      - "introduced"
+      - "debut"
+      - "showcase"
+      - "showcased"
+      - "reveal"
+      - "revealed"
+      - "present"
+      - "presented"
+      - "demo"
+      - "demonstration"
+      - "新款"
+      - "推出"
+      - "亮相"
+      - "首发"
+      - "量产"
+      - "mass production"
+      - "参数"
+      - "specs"
+      - "specifications"
+      - "performance"
+      - "benchmark"
+      - "version"
+      - "v1"
+      - "v2"
+      - "gen "
+      - "generation"
+      - "update"
+      - "upgrade"
+      - "next-gen"
+      - "next gen"
+      - "improved"
+      - "new model"
+      - "new robot"
+      - "新版本"
+      - "迭代"
+    weight: 1.0
+
+  deployment:
+    keywords:
+      - "落地"
+      - "部署"
+      - "deployed"
+      - "deployment"
+      - "订单"
+      - "order"
+      - "工厂"
+      - "factory"
+      - "warehouse"
+      - "仓储"
+      - "物流"
+      - "logistics"
+      - "医疗"
+      - "healthcare"
+      - "hospital"
+      - "服务业"
+      - "service"
+      - "commercial"
+      - "commercial deployment"
+      - "案例"
+      - "case study"
+      - "customer"
+      - "客户"
+      - "合作"
+      - "partnership"
+    weight: 1.0
+
+  talent:
+    keywords:
+      - "加入"
+      - "离职"
+      - "hired"
+      - "joins"
+      - "left"
+      - "appointed"
+      - "任命"
+      - "ceo"
+      - "cto"
+      - "coo"
+      - "cxo"
+      - "chief"
+      - "founder"
+      - "创始人"
+      - "联创"
+      - "co-founder"
+      - "团队"
+      - "team"
+      - "recruit"
+      - "招聘"
+      - "professor"
+      - "教授"
+      - "phd"
+      - "博士"
+    weight: 1.0
+
+  supply_chain:
+    keywords:
+      - "供应链"
+      - "supply chain"
+      - "供应商"
+      - "supplier"
+      - "执行器"
+      - "actuator"
+      - "传感器"
+      - "sensor"
+      - "芯片"
+      - "chip"
+      - "semiconductor"
+      - "半导体"
+      - "价格"
+      - "price"
+      - "成本"
+      - "cost"
+      - "零部件"
+      - "component"
+      - "shortage"
+      - "缺货"
+      - "产能"
+      - "capacity"
+    weight: 1.0
+
+  policy:
+    keywords:
+      - "政策"
+      - "policy"
+      - "监管"
+      - "regulation"
+      - "regulatory"
+      - "标准"
+      - "standard"
+      - "补贴"
+      - "subsidy"
+      - "government"
+      - "政府"
+      - "部委"
+      - "ministry"
+      - "准入"
+      - "certification"
+      - "认证"
+      - "法规"
+      - "legislation"
+      - "ban"
+      - "restricted"
+      - "工信部"
+      - "科技部"
+      - "发改委"
+    weight: 1.0
+
+# ─────────────────────────────────────────
+# 排除关键词（命中则降低分数或直接拒绝）
+# ─────────────────────────────────────────
+exclude_keywords:
+  - "unsubscribe"
+  - "newsletter"
+  - "privacy policy"
+  - "terms of service"
+  - "cookie"
+
+# ─────────────────────────────────────────
+# 高价值来源加成（source_id -> 额外加分）
+# ─────────────────────────────────────────
+source_bonus:
+  tw_jim_fan: 1.5
+  tw_andrej_karpathy: 1.5
+  tw_sergey_levine: 1.5
+  tw_chelsea_finn: 1.5
+  tw_pieter_abbeel: 1.5
+  tw_figure_robot: 2.0
+  tw_physical_intelligence: 2.0
+  tw_unitree: 2.0
+  web_figure_ai: 2.0
+  web_physical_intelligence: 2.0
+  bair_blog: 1.5
+  deepmind_blog: 1.5

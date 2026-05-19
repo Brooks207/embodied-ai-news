@@ -1,0 +1,308 @@
+# EAI 信息源配置
+# type: rss | twitter | youtube | weibo | web
+# importance: 1(低) - 5(高)，影响相关性评分
+
+# ─────────────────────────────────────────
+# RSS 信息源
+# ─────────────────────────────────────────
+rss:
+  - id: arxiv_robotics
+    name: "arXiv Robotics"
+    url: "https://arxiv.org/rss/cs.RO"
+    importance: 3
+
+  - id: bair_blog
+    name: "BAIR Blog"
+    url: "https://bair.berkeley.edu/blog/feed.xml"
+    importance: 5
+
+  - id: nvidia_dev_blog
+    name: "NVIDIA Developer Blog"
+    url: "https://developer.nvidia.com/blog/feed/"
+    importance: 4
+
+  - id: techcrunch_robotics
+    name: "TechCrunch Robotics"
+    url: "https://techcrunch.com/tag/robotics/feed/"
+    importance: 3
+
+  - id: venturebeat_ai
+    name: "VentureBeat AI"
+    url: "https://venturebeat.com/category/ai/feed/"
+    importance: 3
+
+  - id: deepmind_blog
+    name: "Google DeepMind Blog"
+    url: "https://deepmind.google/blog/rss.xml"
+    importance: 5
+
+  - id: 36kr_robotics
+    name: "36氪 机器人"
+    url: "https://36kr.com/feed"
+    importance: 4
+
+  - id: qbitai
+    name: "量子位"
+    url: "https://www.qbitai.com/feed"
+    importance: 4
+
+  - id: hugging_face_blog
+    name: "Hugging Face Blog"
+    url: "https://huggingface.co/blog/feed.xml"
+    importance: 3
+
+# ─────────────────────────────────────────
+# Twitter / X 账号
+# ─────────────────────────────────────────
+twitter:
+  # 海外公司
+  - id: tw_figure_robot
+    name: "Figure AI"
+    handle: "figure_robot"
+    importance: 5
+
+  - id: tw_tesla_ai
+    name: "Tesla AI"
+    handle: "Tesla_AI"
+    importance: 5
+
+  - id: tw_1x_technologies
+    name: "1X Technologies"
+    handle: "1x_technologies"
+    importance: 4
+
+  - id: tw_agility_robotics
+    name: "Agility Robotics"
+    handle: "AgilityRobotics"
+    importance: 4
+
+  - id: tw_apptronik
+    name: "Apptronik"
+    handle: "Apptronik_Inc"
+    importance: 4
+
+  - id: tw_sanctuary_ai
+    name: "Sanctuary AI"
+    handle: "SanctuaryAIinc"
+    importance: 4
+
+  - id: tw_physical_intelligence
+    name: "Physical Intelligence"
+    handle: "pi_robot_ai"
+    importance: 5
+
+  - id: tw_covariant
+    name: "Covariant"
+    handle: "covariantai"
+    importance: 4
+
+  - id: tw_intrinsic
+    name: "Intrinsic"
+    handle: "intrinsic_ai"
+    importance: 4
+
+  - id: tw_google_deepmind
+    name: "Google DeepMind"
+    handle: "GoogleDeepMind"
+    importance: 5
+
+  - id: tw_unitree
+    name: "Unitree Robotics"
+    handle: "UnitreeRobotics"
+    importance: 5
+
+  - id: tw_shadow_robot
+    name: "Shadow Robot"
+    handle: "Shadow_Robot"
+    importance: 3
+
+  - id: tw_dexterity
+    name: "Dexterity AI"
+    handle: "DexterityAI"
+    importance: 3
+
+  # KOL 个人账号
+  - id: tw_jim_fan
+    name: "Jim Fan (NVIDIA)"
+    handle: "DrJimFan"
+    importance: 5
+
+  - id: tw_sergey_levine
+    name: "Sergey Levine"
+    handle: "svlevine"
+    importance: 5
+
+  - id: tw_chelsea_finn
+    name: "Chelsea Finn"
+    handle: "chelseabfinn"
+    importance: 5
+
+  - id: tw_pieter_abbeel
+    name: "Pieter Abbeel"
+    handle: "pabbeel"
+    importance: 5
+
+  - id: tw_fei_fei_li
+    name: "Fei-Fei Li"
+    handle: "drfeifei"
+    importance: 5
+
+  - id: tw_russ_tedrake
+    name: "Russ Tedrake"
+    handle: "russtedrake"
+    importance: 5
+
+  - id: tw_yann_lecun
+    name: "Yann LeCun"
+    handle: "ylecun"
+    importance: 4
+
+  - id: tw_david_ha
+    name: "David Ha"
+    handle: "hardmaru"
+    importance: 4
+
+  - id: tw_andrej_karpathy
+    name: "Andrej Karpathy"
+    handle: "karpathy"
+    importance: 5
+
+  - id: tw_marc_raibert
+    name: "Marc Raibert"
+    handle: "marcraibertbd"
+    importance: 4
+
+  - id: tw_marco_hutter
+    name: "Marco Hutter (ETH)"
+    handle: "MarcoHutterETH"
+    importance: 4
+
+  - id: tw_ken_goldberg
+    name: "Ken Goldberg"
+    handle: "Ken_Goldberg"
+    importance: 4
+
+# ─────────────────────────────────────────
+# YouTube 频道
+# ─────────────────────────────────────────
+youtube:
+  - id: yt_figure_ai
+    name: "Figure AI"
+    channel_id: "UCxxxxxx"    # 待补充真实 channel_id
+    importance: 5
+
+  - id: yt_boston_dynamics
+    name: "Boston Dynamics"
+    channel_id: "UC5DPCCmhuXHBMbzJhZK5jYg"
+    importance: 4
+
+  - id: yt_agility_robotics
+    name: "Agility Robotics"
+    channel_id: "UCxxxxxx"
+    importance: 4
+
+  - id: yt_unitree
+    name: "Unitree Robotics"
+    channel_id: "UCxxxxxx"
+    importance: 5
+
+  - id: yt_google_deepmind
+    name: "Google DeepMind"
+    channel_id: "UCP7jMXSY2xbc3KCAE0MHQ-A"
+    importance: 5
+
+  - id: yt_nvidia_robotics
+    name: "NVIDIA Robotics"
+    channel_id: "UCxxxxxx"
+    importance: 4
+
+# ─────────────────────────────────────────
+# 微博账号（中国公司）
+# ─────────────────────────────────────────
+weibo:
+  - id: wb_unitree
+    name: "宇树科技"
+    username: "unitreerobotics"
+    importance: 5
+
+  - id: wb_ubtech
+    name: "优必选"
+    username: "ubtechrobotics"
+    importance: 4
+
+  - id: wb_fourier
+    name: "傅利叶智能"
+    username: "fourier_intelligence"
+    importance: 4
+
+  - id: wb_zhiyuan
+    name: "智元机器人"
+    username: "zhiyuanrobot"
+    importance: 5
+
+  - id: wb_galbot
+    name: "银河通用"
+    username: "galbot_ai"
+    importance: 4
+
+# ─────────────────────────────────────────
+# 网站爬虫（无 RSS 的公司官网 & 中文媒体）
+# ─────────────────────────────────────────
+web:
+  # 海外公司官网
+  - id: web_figure_ai
+    name: "Figure AI News"
+    url: "https://www.figure.ai/news"
+    article_selector: "a[href*='/news/']"
+    importance: 5
+
+  - id: web_physical_intelligence
+    name: "Physical Intelligence Blog"
+    url: "https://www.physicalintelligence.company/blog"
+    article_selector: "a[href*='/blog/']"
+    importance: 5
+
+  - id: web_1x_tech
+    name: "1X Technologies"
+    url: "https://www.1x.tech/discover"
+    article_selector: "a[href*='/discover/']"
+    importance: 4
+
+  - id: web_apptronik
+    name: "Apptronik Press"
+    url: "https://apptronik.com/press-release"
+    article_selector: "a[href*='/news-collection/']"
+    importance: 4
+
+  - id: web_fourier
+    name: "傅利叶智能官网"
+    url: "https://fftai.com/newsroom"
+    article_selector: "a[href*='/newsroom']"
+    importance: 4
+
+  - id: web_sanctuary_ai
+    name: "Sanctuary AI News"
+    url: "https://www.sanctuaryai.com/news"
+    article_selector: "a[href*='/news/']"
+    importance: 4
+
+  # 中国公司官网
+  - id: web_unitree
+    name: "宇树科技官网"
+    url: "https://www.unitree.com/news/"
+    article_selector: "a[href*='/news/']"
+    importance: 5
+
+  - id: web_zhiyuan
+    name: "智元机器人官网"
+    url: "https://www.zhiyuan-robot.com/news"
+    article_selector: "a[href*='/news']"
+    importance: 5
+
+  # 中文科技媒体
+  - id: web_leiphone_robot
+    name: "雷锋网 机器人"
+    url: "https://www.leiphone.com/category/robot"
+    article_selector: "a[href*='/news/']"
+    importance: 3
+
