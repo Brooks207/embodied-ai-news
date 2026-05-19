@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>EAI 新闻自动化系统 — 技术流程说明 v2</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css/github-markdown.min.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">EAI 新闻自动化系统 — 技术流程说明 v2</h1>
+</header>
+<h1 id="eai-新闻自动化系统-技术流程说明">EAI 新闻自动化系统 —
+技术流程说明</h1>
+<blockquote>
+<p>文档版本：2026-05-19 v2
+项目路径：<code>/Users/blueye/Desktop/News</code>
+GitHub：<code>https://github.com/Brooks207/embodied-ai-news</code></p>
+</blockquote>
+<hr />
+<h2 id="变更记录">变更记录</h2>
+<table>
+<colgroup>
+<col style="width: 28%" />
+<col style="width: 28%" />
+<col style="width: 42%" />
+</colgroup>
+<thead>
+<tr>
+<th>版本</th>
+<th>日期</th>
+<th>变更内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>v1</td>
+<td>2026-05-19</td>
+<td>初始版本</td>
+</tr>
+<tr>
+<td>v2</td>
+<td>2026-05-19</td>
+<td>删除 arXiv；补充 20+ 新信源；加入信源 tier
+体系；去重升级为两阶段；品类关键词扩充；调度从 APScheduler 改为系统
+cron</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="一整体流程">一、整体流程</h2>
+<pre><code>信息采集（多源并发）
+    ↓
+两阶段去重
+    ├─ Stage 1：URL 哈希去重（跨批次）
+    └─ Stage 2：标题模糊去重（批次内，48h 窗口，tier 优先）
+    ↓
+相关性粗筛（关键词评分 ≥ 5.0）
+    ↓
+品类识别
+    ├─ Stage 1：关键词打分
+    └─ Stage 2：LLM 兜底（仅得分全为 0 时触发）
+    ↓
+存储（飞书多维表格 / Excel / SQLite）</code></pre>
+<p><strong>调度方式</strong>：系统 cron，每天 10:00
+自动触发一次完整流程。
+日志路径：<code>eai_news/data/logs/cron.log</code></p>
+<hr />
+<h2 id="二信息来源与-tier-体系">二、信息来源与 Tier 体系</h2>
+<p>信息源配置文件：<code>eai_news/config/sources.yaml</code>
+采集器入口：<code>eai_news/collectors/__init__.py</code>
+信息源待办文档：<code>docs/sources_todo.md</code></p>
+<p>所有采集器并发运行（<code>asyncio.gather</code>），单个采集器失败不影响其他源。</p>
+<h3 id="tier-定义">Tier 定义</h3>
+<p>每个信源都有 <code>tier</code> 标签，用于去重时的优先级判断：</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Tier</th>
+<th>类型</th>
+<th>举例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>官方一手来源（公司官网、官方社媒、KOL 本人）</td>
+<td>figure.ai、<span class="citation"
+data-cites="figure_robot">@figure_robot</span>、<span class="citation"
+data-cites="DrJimFan">@DrJimFan</span></td>
+</tr>
+<tr>
+<td>2</td>
+<td>垂类专业媒体 / 学术机构</td>
+<td>TechCrunch Robotics、量子位、MIT CSAIL</td>
+</tr>
+<tr>
+<td>3</td>
+<td>综合媒体</td>
+<td>VentureBeat、36氪、雷锋网</td>
+</tr>
+</tbody>
+</table>
+<p>同一事件被多个信源覆盖时，tier 数字更小的来源优先保留。</p>
+<hr />
+<h3 id="rss-订阅8-个">2.1 RSS 订阅（8 个）</h3>
+<table>
+<thead>
+<tr>
+<th>来源</th>
+<th>Tier</th>
+<th>重要度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BAIR Blog（伯克利 AI 研究室）</td>
+<td>2</td>
+<td>★★★★★</td>
+</tr>
+<tr>
+<td>NVIDIA Developer Blog</td>
+<td>2</td>
+<td>★★★★</td>
+</tr>
+<tr>
+<td>TechCrunch Robotics</td>
+<td>2</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>VentureBeat AI</td>
+<td>3</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>Google DeepMind Blog</td>
+<td>1</td>
+<td>★★★★★</td>
+</tr>
+<tr>
+<td>36氪 机器人</td>
+<td>3</td>
+<td>★★★★</td>
+</tr>
+<tr>
+<td>量子位</td>
+<td>2</td>
+<td>★★★★</td>
+</tr>
+<tr>
+<td>Hugging Face Blog</td>
+<td>3</td>
+<td>★★★</td>
+</tr>
+</tbody>
+</table>
+<p>每个 RSS 源最多抓取最新 30 条，解析标题、链接、发布时间、摘要。</p>
+<blockquote>
+<p>arXiv Robotics 已移除（内容过于学术，为原始论文预印本）。</p>
+</blockquote>
+<hr />
+<h3 id="twitter-x-账号31-个">2.2 Twitter / X 账号（31 个）</h3>
+<p>需配置 <code>TWITTER_BEARER_TOKEN</code>（Basic 套餐
+$100/月），未配置时自动跳过。</p>
+<p><strong>海外公司官方账号（16 个，均为 tier 1）</strong></p>
+<table>
+<thead>
+<tr>
+<th>公司</th>
+<th>Handle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Figure AI</td>
+<td><code>@figure_robot</code></td>
+</tr>
+<tr>
+<td>Tesla AI</td>
+<td><code>@Tesla_AI</code></td>
+</tr>
+<tr>
+<td>Physical Intelligence</td>
+<td><code>@pi_robot_ai</code></td>
+</tr>
+<tr>
+<td>Google DeepMind</td>
+<td><code>@GoogleDeepMind</code></td>
+</tr>
+<tr>
+<td>Unitree Robotics</td>
+<td><code>@UnitreeRobotics</code></td>
+</tr>
+<tr>
+<td>1X Technologies</td>
+<td><code>@1x_technologies</code></td>
+</tr>
+<tr>
+<td>Agility Robotics</td>
+<td><code>@AgilityRobotics</code></td>
+</tr>
+<tr>
+<td>Apptronik</td>
+<td><code>@Apptronik_Inc</code></td>
+</tr>
+<tr>
+<td>Sanctuary AI</td>
+<td><code>@SanctuaryAIinc</code></td>
+</tr>
+<tr>
+<td>Engineered Arts</td>
+<td><code>@engineeredarts</code></td>
+</tr>
+<tr>
+<td>Skild AI</td>
+<td><code>@skild_ai</code></td>
+</tr>
+<tr>
+<td>Covariant</td>
+<td><code>@covariantai</code></td>
+</tr>
+<tr>
+<td>Intrinsic</td>
+<td><code>@intrinsic_ai</code></td>
+</tr>
+<tr>
+<td>Shadow Robot</td>
+<td><code>@Shadow_Robot</code></td>
+</tr>
+<tr>
+<td>Dexterity AI</td>
+<td><code>@DexterityAI</code></td>
+</tr>
+<tr>
+<td>RightHand Robotics</td>
+<td><code>@RightHandRobot</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>KOL 个人账号（15 个，均为 tier 1）</strong></p>
+<table>
+<thead>
+<tr>
+<th>姓名</th>
+<th>Handle</th>
+<th>机构</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Jim Fan</td>
+<td><code>@DrJimFan</code></td>
+<td>NVIDIA</td>
+</tr>
+<tr>
+<td>Sergey Levine</td>
+<td><code>@svlevine</code></td>
+<td>UC Berkeley</td>
+</tr>
+<tr>
+<td>Chelsea Finn</td>
+<td><code>@chelseabfinn</code></td>
+<td>Stanford</td>
+</tr>
+<tr>
+<td>Pieter Abbeel</td>
+<td><code>@pabbeel</code></td>
+<td>Berkeley</td>
+</tr>
+<tr>
+<td>Fei-Fei Li</td>
+<td><code>@drfeifei</code></td>
+<td>Spatial Intelligence</td>
+</tr>
+<tr>
+<td>Chien-Ming Huang</td>
+<td><code>@chienminghuang</code></td>
+<td>Johns Hopkins</td>
+</tr>
+<tr>
+<td>Russ Tedrake</td>
+<td><code>@russtedrake</code></td>
+<td>MIT</td>
+</tr>
+<tr>
+<td>Yann LeCun</td>
+<td><code>@ylecun</code></td>
+<td>Meta</td>
+</tr>
+<tr>
+<td>David Ha</td>
+<td><code>@hardmaru</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Andrej Karpathy</td>
+<td><code>@karpathy</code></td>
+<td>前 Tesla</td>
+</tr>
+<tr>
+<td>Marc Raibert</td>
+<td><code>@marcraibertbd</code></td>
+<td>Boston Dynamics</td>
+</tr>
+<tr>
+<td>Marco Hutter</td>
+<td><code>@MarcoHutterETH</code></td>
+<td>ETH</td>
+</tr>
+<tr>
+<td>Siddhartha Srinivasa</td>
+<td><code>@siddhuinfinity</code></td>
+<td>UW</td>
+</tr>
+<tr>
+<td>Dieter Fox</td>
+<td><code>@dieter_fox</code></td>
+<td>NVIDIA</td>
+</tr>
+<tr>
+<td>Ken Goldberg</td>
+<td><code>@Ken_Goldberg</code></td>
+<td>Berkeley</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="youtube-频道6-个均为-tier-1">2.3 YouTube 频道（6 个，均为 tier
+1）</h3>
+<table>
+<thead>
+<tr>
+<th>频道</th>
+<th>重要度</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Figure AI</td>
+<td>★★★★★</td>
+<td>channel_id 待补充</td>
+</tr>
+<tr>
+<td>Boston Dynamics</td>
+<td>★★★★</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Agility Robotics</td>
+<td>★★★★</td>
+<td>channel_id 待补充</td>
+</tr>
+<tr>
+<td>Unitree Robotics</td>
+<td>★★★★★</td>
+<td>channel_id 待补充</td>
+</tr>
+<tr>
+<td>Google DeepMind</td>
+<td>★★★★★</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>NVIDIA Robotics</td>
+<td>★★★★</td>
+<td>channel_id 待补充</td>
+</tr>
+</tbody>
+</table>
+<p>需配置 <code>YOUTUBE_API_KEY</code>，未配置时跳过。</p>
+<hr />
+<h3 id="微博账号7-个均为-tier-1">2.4 微博账号（7 个，均为 tier 1）</h3>
+<table>
+<thead>
+<tr>
+<th>公司</th>
+<th>微博用户名</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>宇树科技</td>
+<td><code>unitreerobotics</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>优必选</td>
+<td><code>ubtechrobotics</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>傅利叶智能</td>
+<td><code>fourier_intelligence</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>智元机器人</td>
+<td><code>zhiyuanrobot</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>银河通用</td>
+<td><code>galbot_ai</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>乐聚机器人</td>
+<td><code>乐聚机器人</code></td>
+<td>🔍 待验证</td>
+</tr>
+<tr>
+<td>自变量（AGIBOT）</td>
+<td><code>自变量机器人</code></td>
+<td>🔍 待验证</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="网站爬虫23-个">2.5 网站爬虫（23 个）</h3>
+<p>爬虫通过 CSS Selector 提取文章链接，每个链接生成一条
+<code>RawItem</code>。</p>
+<p><strong>海外公司官网（10 个，tier 1）</strong></p>
+<table>
+<thead>
+<tr>
+<th>来源</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Figure AI</td>
+<td><code>figure.ai/news</code></td>
+</tr>
+<tr>
+<td>Physical Intelligence</td>
+<td><code>physicalintelligence.company/blog</code></td>
+</tr>
+<tr>
+<td>1X Technologies</td>
+<td><code>1x.tech/discover</code></td>
+</tr>
+<tr>
+<td>Apptronik</td>
+<td><code>apptronik.com/press-release</code></td>
+</tr>
+<tr>
+<td>Sanctuary AI</td>
+<td><code>sanctuaryai.com/news</code></td>
+</tr>
+<tr>
+<td>Engineered Arts</td>
+<td><code>engineeredarts.co.uk/blog</code></td>
+</tr>
+<tr>
+<td>Skild AI</td>
+<td><code>skild.ai/blog</code></td>
+</tr>
+<tr>
+<td>RightHand Robotics</td>
+<td><code>righthandrobotics.com/news</code></td>
+</tr>
+<tr>
+<td>SCHUNK</td>
+<td><code>schunk.com/us/en/news</code></td>
+</tr>
+<tr>
+<td>傅利叶智能</td>
+<td><code>fftai.com/newsroom</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>中国公司官网（6 个，tier 1）</strong></p>
+<table>
+<thead>
+<tr>
+<th>来源</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>宇树科技</td>
+<td><code>unitree.com/news</code></td>
+</tr>
+<tr>
+<td>智元机器人</td>
+<td><code>zhiyuan-robot.com/news</code></td>
+</tr>
+<tr>
+<td>乐聚机器人</td>
+<td><code>lejurobot.com/news</code></td>
+</tr>
+<tr>
+<td>星动纪元</td>
+<td><code>astribot.com/news</code></td>
+</tr>
+<tr>
+<td>自变量 AGIBOT</td>
+<td><code>agibot.com/news</code></td>
+</tr>
+<tr>
+<td>将闲科技 LiberAI</td>
+<td><code>liberai.cn/news</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>学术实验室（6 个，tier 2）</strong></p>
+<table>
+<thead>
+<tr>
+<th>来源</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MIT CSAIL</td>
+<td><code>csail.mit.edu/news</code></td>
+</tr>
+<tr>
+<td>Toyota Research Institute</td>
+<td><code>tri.global/news</code></td>
+</tr>
+<tr>
+<td>CMU Robotics Institute</td>
+<td><code>ri.cmu.edu/ri-news</code></td>
+</tr>
+<tr>
+<td>ETH Zurich RSL</td>
+<td><code>rsl.ethz.ch/news-and-events/news</code></td>
+</tr>
+<tr>
+<td>上海人工智能实验室</td>
+<td><code>shlab.org.cn/news</code></td>
+</tr>
+<tr>
+<td>北京智源研究院</td>
+<td><code>baai.ac.cn/news</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>中文科技媒体（1 个，tier 3）</strong></p>
+<table>
+<thead>
+<tr>
+<th>来源</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>雷锋网 机器人</td>
+<td><code>leiphone.com/category/robot</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="三去重机制">三、去重机制</h2>
+<p>实现：<code>eai_news/filters/deduplicator.py</code></p>
+<h3 id="两阶段去重">两阶段去重</h3>
+<p><strong>Stage 1：URL 哈希去重（跨批次）</strong></p>
+<p><code>RawItem.id</code> 为 URL 的 MD5
+哈希。每次采集前从数据库加载已有 ID
+集合，命中则丢弃，防止同一文章重复入库。</p>
+<p><strong>Stage 2：标题模糊去重（批次内）</strong></p>
+<p>解决同一事件被多个信源覆盖的问题（如官网发布 → 媒体跟进报道）。</p>
+<ol type="1">
+<li>将当次批次内所有条目<strong>按 tier 升序排列</strong>（tier 1
+在前，保证一手来源优先）</li>
+<li>对每条新内容，检查已接受列表中是否存在满足以下两个条件的条目：
+<ul>
+<li>发布时间差 ≤ 48 小时</li>
+<li>标题归一化后相似度 ≥
+70%（<code>difflib.SequenceMatcher</code>）</li>
+</ul></li>
+<li>若发现重复，丢弃当前条目（tier 更高的那条）</li>
+</ol>
+<p><strong>效果示例：</strong> - Figure AI 官网发布新品（tier 1）→
+TechCrunch 同日报道（tier 2）→ 保留官网，丢弃 TechCrunch -
+宇树科技微博发布（tier 1）→ 量子位次日转载（tier 2）→ 保留微博原文</p>
+<hr />
+<h2 id="四相关性粗筛">四、相关性粗筛</h2>
+<p>配置文件：<code>eai_news/config/filters.yaml</code>
+实现：<code>eai_news/filters/relevance_scorer.py</code></p>
+<h3 id="评分规则">评分规则</h3>
+<table>
+<thead>
+<tr>
+<th>规则</th>
+<th>分值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>命中<strong>核心关键词</strong>（每个）</td>
+<td>+2.0</td>
+</tr>
+<tr>
+<td>命中<strong>支持关键词</strong>（每个）</td>
+<td>+0.8</td>
+</tr>
+<tr>
+<td>来源重要度加成（importance 1-5）</td>
+<td>+0 ~ +2.0</td>
+</tr>
+<tr>
+<td>高价值信源奖励（见下表）</td>
+<td>+1.5 ~ +2.0</td>
+</tr>
+<tr>
+<td>命中<strong>排除关键词</strong>（任一）</td>
+<td>直接归零</td>
+</tr>
+</tbody>
+</table>
+<p><strong>高价值信源奖励</strong></p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>信源 ID</th>
+<th>额外加分</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tw_jim_fan</code> <code>tw_andrej_karpathy</code>
+<code>tw_sergey_levine</code> <code>tw_chelsea_finn</code>
+<code>tw_pieter_abbeel</code> <code>bair_blog</code>
+<code>deepmind_blog</code></td>
+<td>+1.5</td>
+</tr>
+<tr>
+<td><code>tw_figure_robot</code> <code>tw_physical_intelligence</code>
+<code>tw_unitree</code> <code>web_figure_ai</code>
+<code>web_physical_intelligence</code></td>
+<td>+2.0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>排除关键词（命中即得 0 分）：</strong>
+<code>unsubscribe</code> <code>newsletter</code>
+<code>privacy policy</code> <code>terms of service</code>
+<code>cookie</code></p>
+<p><strong>筛选阈值：</strong>
+<code>MIN_RELEVANCE_SCORE = 5.0</code>（可在 <code>.env</code>
+调整）</p>
+<h3 id="核心关键词2.0">核心关键词（+2.0）</h3>
+<pre><code>具身智能 / embodied ai / embodied intelligence / humanoid robot / humanoid /
+人形机器人 / robot learning / foundation model / manipulation / locomotion /
+dexterous / 灵巧手 / 双臂 / bimanual / whole body control / 全身控制 /
+imitation learning / 模仿学习 / reinforcement learning robotics / robot policy /
+legged robot / 足式机器人 / mobile manipulation</code></pre>
+<h3 id="支持关键词0.8">支持关键词（+0.8）</h3>
+<pre><code>robot / robotics / 机器人 / actuator / 执行器 / sensor / 传感器 /
+end effector / 末端执行器 / autonomous / 自主 / teleoperation / 遥操作 /
+sim2real / 仿真 / dataset / 数据集</code></pre>
+<hr />
+<h2 id="五品类识别">五、品类识别</h2>
+<p>实现：<code>eai_news/filters/categorizer.py</code></p>
+<h3 id="六大品类">六大品类</h3>
+<table>
+<thead>
+<tr>
+<th>品类</th>
+<th>Key</th>
+<th>覆盖内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>融资</td>
+<td><code>funding</code></td>
+<td>融资轮次、估值、IPO、并购</td>
+</tr>
+<tr>
+<td>产品</td>
+<td><code>product</code></td>
+<td>新品发布、迭代、Demo、量产</td>
+</tr>
+<tr>
+<td>落地</td>
+<td><code>deployment</code></td>
+<td>商业部署、订单、工厂/仓储应用</td>
+</tr>
+<tr>
+<td>人才</td>
+<td><code>talent</code></td>
+<td>高管任命、人事变动、招聘</td>
+</tr>
+<tr>
+<td>供应链</td>
+<td><code>supply_chain</code></td>
+<td>零部件、执行器、芯片、成本</td>
+</tr>
+<tr>
+<td>政策</td>
+<td><code>policy</code></td>
+<td>政策文件、监管、补贴、标准</td>
+</tr>
+<tr>
+<td>其他</td>
+<td><code>other</code></td>
+<td>以上均不符合</td>
+</tr>
+</tbody>
+</table>
+<h3 id="两阶段识别">两阶段识别</h3>
+<p><strong>Stage 1：关键词打分</strong></p>
+<pre><code>得分 = 命中关键词数 × 品类权重（当前均为 1.0）</code></pre>
+<p>取得分最高的品类。</p>
+<p><strong>Stage 2：LLM 兜底（仅所有品类得分均为 0 时触发）</strong></p>
+<p>调用 <code>claude-haiku-4-5</code> 对标题 + 正文前 300
+字进行分类，返回品类 key。 成本约 $0.0001/篇，API 失败时降级返回
+<code>other</code>。</p>
+<p>此机制解决词库覆盖不足的问题，如公司使用 <code>unveil</code>
+<code>debut</code> <code>showcase</code> <code>reveal</code>
+等高级词汇时仍能正确分类。</p>
+<h3 id="产品品类关键词v2-扩充">产品品类关键词（v2 扩充）</h3>
+<pre><code>发布 / launch / launched / release / announce / unveiled / introduce /
+debut / showcase / reveal / present / demonstration /
+推出 / 亮相 / 首发 / 量产 / next-gen / new model / 迭代</code></pre>
+<hr />
+<h2 id="六存储">六、存储</h2>
+<table>
+<thead>
+<tr>
+<th>后端</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>feishu</code>（默认）</td>
+<td>写入飞书多维表格，可实时查看</td>
+</tr>
+<tr>
+<td><code>excel</code></td>
+<td>写入本地 <code>eai_news/data/eai_news.xlsx</code></td>
+</tr>
+<tr>
+<td><code>both</code></td>
+<td>同时写入飞书与 Excel</td>
+</tr>
+<tr>
+<td>SQLite</td>
+<td>所有原始条目始终写入本地 DB（去重与审计用）</td>
+</tr>
+</tbody>
+</table>
+<p>通过 <code>.env</code> 中的 <code>STORAGE_BACKEND</code> 切换。</p>
+<hr />
+<h2 id="七当前局限与后续规划">七、当前局限与后续规划</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>模块</th>
+<th>现状</th>
+<th>规划</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Phase 3 内容处理</td>
+<td><code>title_zh</code> / <code>summary</code> / <code>tags</code>
+字段均为空</td>
+<td>LLM 二次相关性判断 + 中文标题翻译 + 摘要生成 + 标签提取</td>
+</tr>
+<tr>
+<td>YouTube channel_id</td>
+<td>4 个频道待补充真实 ID</td>
+<td>手动查找填入</td>
+</tr>
+<tr>
+<td>微博采集</td>
+<td>依赖 Cookie，稳定性有限</td>
+<td>待评估替代方案</td>
+</tr>
+<tr>
+<td>待调研信源</td>
+<td>极佳视界、流形空间、千寻智能、无界动力等 4 家中国公司官网未知</td>
+<td>人工查找 URL 后加入</td>
+</tr>
+<tr>
+<td>平台不支持</td>
+<td>LinkedIn / B站 / 小红书暂无采集器</td>
+<td>长期规划</td>
+</tr>
+<tr>
+<td>Phase 4 发布自动化</td>
+<td>未实现</td>
+<td>对接微信公众号、小红书等平台 API</td>
+</tr>
+<tr>
+<td>Phase 6 数据追踪</td>
+<td>未实现</td>
+<td>各平台数据回流与运营报表</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>
