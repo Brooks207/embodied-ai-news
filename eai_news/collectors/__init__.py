@@ -50,9 +50,12 @@ def build_collectors() -> list[tuple[BaseCollector, int]]:
         ), src.get("tier", 1)))
 
     for src in cfg.get("web", []):
+        if src.get("disabled"):
+            continue
         collectors.append((WebCrawler(
             src["id"], src["name"], src["url"],
             article_selector=src.get("article_selector", "a[href]"),
+            allow_external=src.get("allow_external", False),
         ), src.get("tier", 3)))
 
     logger.info(f"Built {len(collectors)} collectors")

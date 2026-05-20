@@ -389,21 +389,21 @@ web:
 
   - id: web_skild_ai
     name: "Skild AI Blog"
-    url: "https://www.skild.ai/blog"
+    url: "https://www.skild.ai/blogs"
     article_selector: "a[href*='/blog/']"
     importance: 4
     tier: 1
 
   - id: web_righthand_robotics
     name: "RightHand Robotics News"
-    url: "https://www.righthandrobotics.com/news"
+    url: "https://righthandrobotics.com/the-latest"
     article_selector: "a[href*='/news']"
     importance: 3
     tier: 1
 
   - id: web_schunk
     name: "SCHUNK News"
-    url: "https://schunk.com/us/en/news/"
+    url: "https://schunk.com/us/en/latest-news/news"
     article_selector: "a[href*='/news/']"
     importance: 3
     tier: 1
@@ -425,8 +425,9 @@ web:
 
   - id: web_lejuu
     name: "乐聚机器人官网"
-    url: "https://www.lejurobot.com/news"
-    article_selector: "a[href*='/news']"
+    url: "https://www.lejurobot.com/news/latest-news"
+    article_selector: "a[href*='mp.weixin.qq.com'], a[href*='weixin'], a[href*='cctv']"
+    allow_external: true
     importance: 4
     tier: 1
 
@@ -436,11 +437,12 @@ web:
     article_selector: "a[href*='/news']"
     importance: 4
     tier: 1
+    disabled: true  # JS渲染，静态爬虫无法获取文章列表
 
   - id: web_agibot
     name: "自变量（AGIBOT）官网"
     url: "https://agibot.com/news"
-    article_selector: "a[href*='/news']"
+    article_selector: "a[href*='/article/']"
     importance: 4
     tier: 1
 
@@ -468,21 +470,21 @@ web:
 
   - id: web_cmu_ri
     name: "CMU Robotics Institute"
-    url: "https://www.ri.cmu.edu/ri-news/"
+    url: "https://www.ri.cmu.edu/news/"
     article_selector: "a[href*='/ri-news/']"
     importance: 4
     tier: 2
 
   - id: web_eth_rsl
     name: "ETH Zurich RSL"
-    url: "https://rsl.ethz.ch/news-and-events/news.html"
+    url: "https://rsl.ethz.ch/the-lab/news.html"
     article_selector: "a[href*='/news']"
     importance: 4
     tier: 2
 
   - id: web_shlab
     name: "上海人工智能实验室"
-    url: "https://www.shlab.org.cn/news"
+    url: "https://www.shlab.org.cn/info"
     article_selector: "a[href*='/news']"
     importance: 4
     tier: 2

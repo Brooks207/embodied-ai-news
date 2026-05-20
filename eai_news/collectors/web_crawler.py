@@ -41,11 +41,13 @@ class WebCrawler(BaseCollector):
         source_name: str,
         index_url: str,
         article_selector: str = "a[href]",
+        allow_external: bool = False,
     ):
         self.source_id = source_id
         self.source_name = source_name
         self.index_url = index_url
         self.article_selector = article_selector
+        self.allow_external = allow_external
         self._base = f"{urlparse(index_url).scheme}://{urlparse(index_url).netloc}"
 
     async def fetch(self) -> list[RawItem]:
@@ -69,7 +71,7 @@ class WebCrawler(BaseCollector):
                 continue
             seen_urls.add(full_url)
 
-            if urlparse(full_url).netloc != urlparse(self._base).netloc:
+            if not self.allow_external and urlparse(full_url).netloc != urlparse(self._base).netloc:
                 continue
 
             title = tag.get_text(strip=True) or tag.get("title", "")
