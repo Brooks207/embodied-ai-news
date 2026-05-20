@@ -1,6 +1,6 @@
 # EAI 新闻自动化系统 — 技术流程说明
 
-> 文档版本：2026-05-19 v4
+> 文档版本：2026-05-20 v5
 > 项目路径：`/Users/blueye/Desktop/News`
 > GitHub：`https://github.com/Brooks207/embodied-ai-news`
 
@@ -14,6 +14,7 @@
 | v2 | 2026-05-19 | 删除 arXiv；补充 20+ 新信源；加入信源 tier 体系；去重升级为两阶段；品类关键词扩充；调度从 APScheduler 改为系统 cron |
 | v3 | 2026-05-19 | 实现 Stage 3 LLM 处理（title_zh / summary）；加入时效过滤（72h）；采集器熔断机制；批量写入 DB；飞书表格新增摘要字段 |
 | v4 | 2026-05-19 | Stage 3 加入假阳性细筛（is_relevant）；修复 LLM 只读标题的 bug，现传入原文首段（≤200字符） |
+| v5 | 2026-05-20 | WebCrawler 加入文章正文抓取（trafilatura，前5条）；新增 requirements.txt |
 
 ---
 
@@ -170,7 +171,7 @@ Stage 3：LLM 内容处理（Claude Haiku，批量 15 条/次，Prompt Cache）
 
 ### 2.5 网站爬虫（23 个）
 
-爬虫通过 CSS Selector 提取文章链接，每个链接生成一条 `RawItem`。
+爬虫访问列表页，提取文章链接；对前 5 条链接额外抓取文章页，用 `trafilatura` 提取正文首段（≤200字符）写入 `RawItem.content`。第 6 条起仅保留链接和标题，`content` 为空。并发抓取上限 3 个，单篇失败不影响其他条目。
 
 **海外公司官网（10 个，tier 1）**
 
