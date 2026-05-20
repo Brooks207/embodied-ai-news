@@ -64,9 +64,9 @@
 | 银河通用 | ✅ galbot_ai | — | |
 | 优必选 | ✅ ubtechrobotics | — | |
 | 傅利叶智能 | ✅ fourier_intelligence | ✅ fftai.com/newsroom | |
-| 乐聚机器人 | 🔍 "乐聚机器人" | ✅ lejurobot.com/news | 微博 username 待验证 |
-| 星动纪元 | ⏳ 待查 | ✅ astribot.com/news | 微博 handle 未知 |
-| 自变量（AGIBOT） | 🔍 "自变量机器人" | ✅ agibot.com/news | 微博 username 待验证 |
+| 乐聚机器人 | 🔍 "乐聚机器人" | ✅ lejurobot.com/news/latest-news（外链微信，已修正）| 微博 username 待验证 |
+| 星动纪元 | ⏳ 待查 | 🚫 astribot.com/news（JS渲染，静态爬虫无效）| 微博 handle 未知 |
+| 自变量（AGIBOT） | 🔍 "自变量机器人" | ✅ agibot.com/news（selector 已修正）| 微博 username 待验证 |
 | 将闲科技 LiberAI | ⏳ 待查 | 🚫 官网无新闻页，连接失败 | 微博 handle 未知 |
 | 极佳视界 | ⏳ 待查 | ⏳ 官网 URL 未知 | 需要进一步调研 |
 | 流形空间 | ⏳ 待查 | ⏳ 官网 URL 未知 | 需要进一步调研 |
@@ -139,3 +139,4 @@
 | 2026-05-20 | Twitter / YouTube 全部标为🔧待处理（API 未配置，402 错误） | 首次跑通发现 |
 | 2026-05-20 | 将闲科技 LiberAI 官网标为🚫（无新闻页，连接失败） | 首次跑通发现 |
 | 2026-05-20 | 标注 404 的爬虫源（Skild、RightHand、SCHUNK、CMU、ETH、上海AI实验室） | 首次跑通发现 |
+| 2026-05-20 | 修正 AGIBOT selector（→ /article/）；乐聚机器人换子页面+外链；星动纪元禁用（JS渲染）| selector 调试 |
