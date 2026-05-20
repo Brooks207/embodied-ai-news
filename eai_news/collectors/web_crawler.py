@@ -1,7 +1,8 @@
-from datetime import datetime, timezone, timedelta
+import asyncio
 from urllib.parse import urljoin, urlparse
 
 import httpx
+import trafilatura
 from bs4 import BeautifulSoup
 from loguru import logger
 
@@ -17,9 +18,22 @@ HEADERS = {
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
 }
 
+_CONTENT_FETCH_LIMIT = 5      # 每个源最多拉多少条文章正文
+_SEMAPHORE = asyncio.Semaphore(3)  # 全局并发上限
+
+
+def _extract_first_para(html: str, max_chars: int = 200) -> str:
+    text = trafilatura.extract(html, include_comments=False, include_tables=False) or ""
+    for line in text.split("\n"):
+        line = line.strip()
+        if len(line) > 20:   # 过滤掉导航残留的短行
+            return line[:max_chars]
+    return ""
+
 
 class WebCrawler(BaseCollector):
-    """Crawl news/blog pages to discover article links."""
+    """Crawl news/blog index pages to discover article links, then fetch
+    content for the first few articles."""
 
     def __init__(
         self,
@@ -27,13 +41,11 @@ class WebCrawler(BaseCollector):
         source_name: str,
         index_url: str,
         article_selector: str = "a[href]",
-        max_age_days: int = 7,
     ):
         self.source_id = source_id
         self.source_name = source_name
         self.index_url = index_url
         self.article_selector = article_selector
-        self.max_age_days = max_age_days
         self._base = f"{urlparse(index_url).scheme}://{urlparse(index_url).netloc}"
 
     async def fetch(self) -> list[RawItem]:
@@ -45,7 +57,7 @@ class WebCrawler(BaseCollector):
         soup = BeautifulSoup(html, "lxml")
         links = soup.select(self.article_selector)
         seen_urls: set[str] = set()
-        items = []
+        items: list[RawItem] = []
 
         for tag in links[:40]:
             href = tag.get("href", "")
@@ -57,13 +69,11 @@ class WebCrawler(BaseCollector):
                 continue
             seen_urls.add(full_url)
 
-            # Only keep links within the same domain
             if urlparse(full_url).netloc != urlparse(self._base).netloc:
                 continue
 
             title = tag.get_text(strip=True) or tag.get("title", "")
             if len(title) < 5:
-                # Try parent element for title
                 parent = tag.parent
                 if parent:
                     title = parent.get_text(strip=True)[:120]
@@ -77,8 +87,26 @@ class WebCrawler(BaseCollector):
                 url=full_url,
                 title=title[:200],
                 content="",
-                published_at=None,   # web crawlers rarely expose publish time on index
+                published_at=None,
                 raw_metadata={"index_url": self.index_url},
             ))
 
+        # Fetch article content for the first N items
+        if items:
+            await self._fill_content(items[:_CONTENT_FETCH_LIMIT])
+
         return items
+
+    async def _fill_content(self, items: list[RawItem]) -> None:
+        async with httpx.AsyncClient(timeout=15, headers=HEADERS, follow_redirects=True) as client:
+            tasks = [self._fetch_one_content(client, item) for item in items]
+            await asyncio.gather(*tasks)
+
+    async def _fetch_one_content(self, client: httpx.AsyncClient, item: RawItem) -> None:
+        async with _SEMAPHORE:
+            try:
+                resp = await client.get(item.url)
+                resp.raise_for_status()
+                item.content = _extract_first_para(resp.text)
+            except Exception as e:
+                logger.debug(f"[{self.source_name}] content fetch failed for {item.url}: {e}")
