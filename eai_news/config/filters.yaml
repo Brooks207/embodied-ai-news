@@ -7,9 +7,11 @@ core_keywords:
   - "具身智能"
   - "embodied ai"
   - "embodied intelligence"
+  - "embodied"
   - "humanoid robot"
   - "humanoid"
   - "人形机器人"
+  - "人形"
   - "robot learning"
   - "foundation model"
   - "manipulation"
@@ -47,6 +49,8 @@ support_keywords:
   - "仿真"
   - "dataset"
   - "数据集"
+  - "deployment"
+  - "deploy"
 
 # ─────────────────────────────────────────
 # 各类别分类关键词
@@ -250,9 +254,19 @@ exclude_keywords:
   - "cookie"
 
 # ─────────────────────────────────────────
-# 高价值来源加成（source_id -> 额外加分）
+# 来源加成（source_id -> 额外加分）
+#
+# 设计原则：
+#   tier-1 公司官方站 / 纯机器人实验室：
+#     importance_bonus + source_bonus >= 5.5，无需关键词命中即可通过
+#     importance=5 → bonus=3.5 (2.0+3.5=5.5)
+#     importance=4 → bonus=4.0 (1.5+4.0=5.5)
+#     importance=3 → bonus=4.5 (1.0+4.5=5.5)
+#
+#   综合学术机构 / 媒体：保留关键词过滤，加小 bonus 降误杀率
 # ─────────────────────────────────────────
 source_bonus:
+  # ── Twitter KOL（保持原值，内容不一定全是机器人，需关键词过滤）──
   tw_jim_fan: 1.5
   tw_andrej_karpathy: 1.5
   tw_sergey_levine: 1.5
@@ -261,7 +275,63 @@ source_bonus:
   tw_figure_robot: 2.0
   tw_physical_intelligence: 2.0
   tw_unitree: 2.0
-  web_figure_ai: 2.0
-  web_physical_intelligence: 2.0
-  bair_blog: 1.5
-  deepmind_blog: 1.5
+
+  # ── tier-1 公司官方 web（importance=5）→ 自动通过 ──
+  web_figure_ai: 3.5
+  web_physical_intelligence: 3.5
+  web_unitree: 3.5
+  web_zhiyuan: 3.5
+
+  # ── tier-1 公司官方 web（importance=4）→ 自动通过 ──
+  web_agibot: 4.0
+  web_lejuu: 4.0
+  web_spirit_ai: 4.0
+  web_fourier: 4.0
+  web_1x_tech: 4.0
+  web_apptronik: 4.0
+  web_sanctuary_ai: 4.0
+  web_skild_ai: 4.0
+  web_agility_robotics: 4.0
+  web_boston_dynamics: 4.0
+  web_intrinsic: 4.0
+
+  # ── tier-1 公司官方 web（importance=3）→ 自动通过 ──
+  web_engineered_arts: 4.5
+  web_righthand_robotics: 4.5
+  web_schunk: 4.5
+  web_dexterity_ai: 4.5
+
+  # ── 纯机器人实验室官网（importance=4）→ 自动通过 ──
+  web_eth_rsl: 4.0
+  web_tri: 4.0
+  web_cmu_ri: 3.5
+
+  # ── 综合学术机构（需关键词过滤，加 bonus 降低误杀）──
+  bair_blog: 2.0
+  deepmind_blog: 2.0
+  web_shlab: 2.5
+  web_baai: 2.0
+  web_mit_csail: 2.0
+
+  # ── 垂类科技媒体（需关键词过滤）──
+  qbitai: 1.5
+  36kr_robotics: 1.5
+  nvidia_dev_blog: 1.5
+  web_leiphone_robot: 1.5
+  techcrunch_robotics: 0.5
+
+  # ── 新增媒体信源 ──
+  # 机器之心：中文AI媒体，需关键词过滤（类比量子位）
+  web_jiqizhixin: 2.0
+  # Embodied Global / Humanoids Daily：垂类专精媒体，接近自动通过（importance=4 → floor=1.5+3.5=5.0）
+  embodied_global: 3.5       # RSS 版（web 版已禁用）
+  web_embodied_global: 3.5   # web 版保留以防切换回来
+  web_humanoids_daily: 3.5
+  # IEEE Spectrum：垂类科技媒体，需关键词过滤
+  ieee_spectrum_robotics: 1.5  # RSS 版（web 版已禁用）
+  web_ieee_spectrum: 1.5       # web 版保留
+  # The Robot Report / IEEE Spectrum：通用机器人行业媒体，需关键词过滤
+  web_robot_report: 1.5
+  web_ieee_spectrum: 1.5
+  # TechCrunch 类目页爬虫（RSS tag/robotics 已有，category 互补）
+  web_techcrunch_cat: 0.5

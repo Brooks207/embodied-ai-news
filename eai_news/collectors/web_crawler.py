@@ -21,6 +21,51 @@ HEADERS = {
 _CONTENT_FETCH_LIMIT = 5      # 每个源最多拉多少条文章正文
 _SEMAPHORE = asyncio.Semaphore(3)  # 全局并发上限
 
+# 无意义的通用锚文字，遇到时向上找标题元素
+_GENERIC_TITLES = frozenset({
+    "read more", "read blog", "read post", "learn more", "view more",
+    "see more", "more", "news", "stories", "blog", "click here",
+    "details", "more details", "explore", "discover", "view", "open",
+    "go", "link",
+})
+
+
+def _extract_title(tag) -> str:
+    """从 <a> 标签提取有意义的标题。
+
+    优先级：
+    ① <a> 内的 heading 子元素（h1-h6）
+    ② <a> 自身文字（非通用短语、长度 ≥ 5）
+    ③ 父容器内的 heading（仅当 ① / ② 失败时）
+    → 若以上全部失败，返回 "" ，让调用方保持该 URL 未认领，
+      等待同一 URL 的后续 <a>（如纯文字标题链接）来提供正确标题。
+    """
+    # ① <a> 内有 heading 子元素（如 <h3>/<h4> 等）直接用
+    heading = tag.find(["h1", "h2", "h3", "h4", "h5", "h6"])
+    if heading:
+        return heading.get_text(strip=True)[:200]
+
+    # ① ½ card 布局：≥2 个 <p> 标签时，最后一个通常是标题（前面是分类/日期）
+    paras = tag.find_all("p")
+    if len(paras) >= 2:
+        last_para = paras[-1].get_text(strip=True)
+        if len(last_para) >= 10:
+            return last_para[:200]
+
+    # ② 用 <a> 自身文字
+    title = tag.get_text(strip=True) or tag.get("title", "")
+
+    # ③ 文字太短或是通用短语 → 去父容器找 heading（只接受 heading，不回退到全文）
+    if len(title) < 5 or title.lower() in _GENERIC_TITLES:
+        parent = tag.parent
+        if parent:
+            heading = parent.find(["h1", "h2", "h3", "h4", "h5", "h6"])
+            if heading:
+                return heading.get_text(strip=True)[:200]
+        return ""  # 无法提取有效标题，返回空让 URL 保持未认领
+
+    return title
+
 
 def _extract_first_para(html: str, max_chars: int = 200) -> str:
     text = trafilatura.extract(html, include_comments=False, include_tables=False) or ""
@@ -69,19 +114,16 @@ class WebCrawler(BaseCollector):
             full_url = urljoin(self._base, href)
             if full_url in seen_urls:
                 continue
-            seen_urls.add(full_url)
 
             if not self.allow_external and urlparse(full_url).netloc != urlparse(self._base).netloc:
                 continue
 
-            title = tag.get_text(strip=True) or tag.get("title", "")
-            if len(title) < 5:
-                parent = tag.parent
-                if parent:
-                    title = parent.get_text(strip=True)[:120]
+            title = _extract_title(tag)
 
             if not title:
                 continue
+
+            seen_urls.add(full_url)  # only mark seen after confirming item will be created
 
             items.append(RawItem(
                 source_id=self.source_id,

@@ -1,11 +1,24 @@
-import asyncio
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
 import feedparser
+import httpx
+from loguru import logger
 
 from ..models import RawItem
 from .base import BaseCollector
+
+_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; EAI-News-Bot/1.0)",
+    "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml",
+}
+
+
+async def _fetch_feed_bytes(url: str) -> bytes:
+    async with httpx.AsyncClient(timeout=20, headers=_HEADERS, follow_redirects=True) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        return resp.content
 
 
 class RSSCollector(BaseCollector):
@@ -15,8 +28,15 @@ class RSSCollector(BaseCollector):
         self.feed_url = feed_url
 
     async def fetch(self) -> list[RawItem]:
-        loop = asyncio.get_event_loop()
-        feed = await loop.run_in_executor(None, feedparser.parse, self.feed_url)
+        raw_bytes = await _fetch_feed_bytes(self.feed_url)
+        feed = feedparser.parse(raw_bytes)
+
+        if feed.bozo and not feed.entries:
+            logger.warning(
+                f"[{self.source_name}] feedparser parse error: {feed.bozo_exception}"
+            )
+        elif not feed.entries:
+            logger.warning(f"[{self.source_name}] feed parsed OK but 0 entries")
 
         items = []
         for entry in feed.entries[:30]:

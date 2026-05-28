@@ -11,6 +11,7 @@ from .twitter_collector import TwitterCollector
 from .youtube_collector import YouTubeCollector
 from .weibo_collector import WeiboCollector
 from .web_crawler import WebCrawler
+from .playwright_crawler import PlaywrightCrawler
 from ..models import RawItem
 
 _SOURCES_PATH = Path(__file__).parent.parent / "config" / "sources.yaml"
@@ -18,20 +19,20 @@ _MAX_CONSECUTIVE_FAILURES = 3
 _consecutive_failures: dict[str, int] = {}
 
 
-def build_collectors() -> list[tuple[BaseCollector, int]]:
+def build_collectors() -> list[tuple[BaseCollector, int, int]]:
     with open(_SOURCES_PATH) as f:
         cfg = yaml.safe_load(f)
 
-    collectors: list[tuple[BaseCollector, int]] = []
+    collectors: list[tuple[BaseCollector, int, int]] = []
 
     for src in cfg.get("rss", []):
-        collectors.append((RSSCollector(src["id"], src["name"], src["url"]), src.get("tier", 3)))
+        collectors.append((RSSCollector(src["id"], src["name"], src["url"]), src.get("tier", 3), src.get("importance", 3)))
 
     if settings.twitter_configured:
         for src in cfg.get("twitter", []):
             collectors.append((TwitterCollector(
                 src["id"], src["name"], src["handle"], settings.twitter_bearer_token,
-            ), src.get("tier", 1)))
+            ), src.get("tier", 1), src.get("importance", 3)))
     else:
         logger.warning("Twitter bearer token not set — skipping Twitter collectors")
 
@@ -40,23 +41,31 @@ def build_collectors() -> list[tuple[BaseCollector, int]]:
             if "UCxxxxxx" not in src.get("channel_id", ""):
                 collectors.append((YouTubeCollector(
                     src["id"], src["name"], src["channel_id"], settings.youtube_api_key,
-                ), src.get("tier", 1)))
+                ), src.get("tier", 1), src.get("importance", 3)))
     else:
         logger.warning("YouTube API key not set — skipping YouTube collectors")
 
     for src in cfg.get("weibo", []):
         collectors.append((WeiboCollector(
             src["id"], src["name"], src["username"], settings.weibo_cookie or "",
-        ), src.get("tier", 1)))
+        ), src.get("tier", 1), src.get("importance", 3)))
 
     for src in cfg.get("web", []):
         if src.get("disabled"):
             continue
-        collectors.append((WebCrawler(
-            src["id"], src["name"], src["url"],
-            article_selector=src.get("article_selector", "a[href]"),
-            allow_external=src.get("allow_external", False),
-        ), src.get("tier", 3)))
+        if src.get("use_browser"):
+            collectors.append((PlaywrightCrawler(
+                src["id"], src["name"], src["url"],
+                article_selector=src.get("article_selector", "a[href]"),
+                allow_external=src.get("allow_external", False),
+                wait_selector=src.get("wait_selector"),
+            ), src.get("tier", 2), src.get("importance", 3)))
+        else:
+            collectors.append((WebCrawler(
+                src["id"], src["name"], src["url"],
+                article_selector=src.get("article_selector", "a[href]"),
+                allow_external=src.get("allow_external", False),
+            ), src.get("tier", 3), src.get("importance", 3)))
 
     logger.info(f"Built {len(collectors)} collectors")
     return collectors
@@ -65,28 +74,29 @@ def build_collectors() -> list[tuple[BaseCollector, int]]:
 async def run_all_collectors() -> list[RawItem]:
     collector_pairs = build_collectors()
 
-    active: list[tuple[BaseCollector, int]] = []
+    active: list[tuple[BaseCollector, int, int]] = []
     skipped: list[str] = []
-    for c, tier in collector_pairs:
+    for c, tier, importance in collector_pairs:
         if _consecutive_failures.get(c.source_id, 0) >= _MAX_CONSECUTIVE_FAILURES:
             skipped.append(c.source_name)
         else:
-            active.append((c, tier))
+            active.append((c, tier, importance))
 
     if skipped:
         logger.warning(f"Circuit-broken sources skipped ({len(skipped)}): {', '.join(skipped)}")
 
-    tasks = [c.safe_fetch() for c, _ in active]
+    tasks = [c.safe_fetch() for c, _, _ in active]
     results: list[CollectorResult] = await asyncio.gather(*tasks)
 
     all_items: list[RawItem] = []
     failed: list[str] = []
 
-    for result, (_, tier) in zip(results, active):
+    for result, (_, tier, importance) in zip(results, active):
         if result.ok:
             _consecutive_failures[result.source_id] = 0
             for item in result.items:
                 item.raw_metadata["tier"] = tier
+                item.raw_metadata["importance"] = importance
             all_items.extend(result.items)
         else:
             count = _consecutive_failures.get(result.source_id, 0) + 1

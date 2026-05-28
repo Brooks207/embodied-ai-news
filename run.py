@@ -124,6 +124,8 @@ async def _run_scheduler():
     except (KeyboardInterrupt, SystemExit):
         logger.info("Shutting down...")
         scheduler.shutdown()
+        from eai_news.collectors.playwright_crawler import close_browser
+        await close_browser()
 
 
 if __name__ == "__main__":

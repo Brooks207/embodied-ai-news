@@ -61,6 +61,7 @@ class NewsItem(BaseModel):
     summary: str = ""
     category: NewsCategory = NewsCategory.OTHER
     relevance_score: float = 0.0
+    importance: float = 0.0            # 0-10，LLM 打分；≥7 单独发文，<7 攒 digest
     tags: list[str] = Field(default_factory=list)
     published_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

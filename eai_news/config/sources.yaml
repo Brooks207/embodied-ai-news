@@ -55,6 +55,18 @@ rss:
     importance: 3
     tier: 3
 
+  - id: embodied_global
+    name: "Embodied Global"
+    url: "https://embodiedglobal.com/rss.xml"
+    importance: 4
+    tier: 2
+
+  - id: ieee_spectrum_robotics
+    name: "IEEE Spectrum Robotics"
+    url: "https://spectrum.ieee.org/feeds/robotics.rss"
+    importance: 4
+    tier: 2
+
 # ─────────────────────────────────────────
 # Twitter / X 账号
 # ─────────────────────────────────────────
@@ -355,7 +367,7 @@ web:
   - id: web_1x_tech
     name: "1X Technologies"
     url: "https://www.1x.tech/discover"
-    article_selector: "a[href*='/discover/']"
+    article_selector: "a[href*='/discover/'][href*='-']"
     importance: 4
     tier: 1
 
@@ -379,6 +391,7 @@ web:
     article_selector: "a[href*='/news/']"
     importance: 4
     tier: 1
+    disabled: true  # JS渲染，无静态链接
 
   - id: web_engineered_arts
     name: "Engineered Arts News"
@@ -386,19 +399,48 @@ web:
     article_selector: "a[href*='/blog/']"
     importance: 3
     tier: 1
+    disabled: true  # JS渲染，无静态链接
 
   - id: web_skild_ai
     name: "Skild AI Blog"
     url: "https://www.skild.ai/blogs"
-    article_selector: "a[href*='/blog/']"
+    article_selector: "a[href*='/blogs/']"
     importance: 4
     tier: 1
 
   - id: web_righthand_robotics
     name: "RightHand Robotics News"
     url: "https://righthandrobotics.com/the-latest"
-    article_selector: "a[href*='/news']"
+    article_selector: "a[href*='/the-latest/']"
     importance: 3
+    tier: 1
+
+  - id: web_agility_robotics
+    name: "Agility Robotics Press"
+    url: "https://agilityrobotics.com/press-releases"
+    article_selector: "a[href*='/content/']"
+    importance: 4
+    tier: 1
+
+  - id: web_dexterity_ai
+    name: "Dexterity AI Blog"
+    url: "https://www.dexterity.ai/blog"
+    article_selector: "a[href*='/blog/']"
+    importance: 3
+    tier: 1
+
+  - id: web_boston_dynamics
+    name: "Boston Dynamics Blog"
+    url: "https://bostondynamics.com/blog"
+    article_selector: "a[href*='/blog/'][href*='-']"
+    importance: 4
+    tier: 1
+
+  - id: web_intrinsic
+    name: "Intrinsic Blog"
+    url: "https://intrinsic.ai/blog"
+    article_selector: "a[href*='/blog/posts/']"
+    importance: 4
     tier: 1
 
   - id: web_schunk
@@ -418,8 +460,8 @@ web:
 
   - id: web_zhiyuan
     name: "智元机器人官网"
-    url: "https://www.zhiyuan-robot.com/news"
-    article_selector: "a[href*='/news']"
+    url: "https://www.agibot.com.cn/news"
+    article_selector: "a[href*='/article/315/detail/']"
     importance: 5
     tier: 1
 
@@ -446,12 +488,20 @@ web:
     importance: 4
     tier: 1
 
+  - id: web_spirit_ai
+    name: "千寻智能官网"
+    url: "https://www.spirit-ai.com/news"
+    article_selector: "a[href*='/news/']"
+    importance: 4
+    tier: 1
+
   - id: web_liberai
     name: "将闲科技 LiberAI"
     url: "https://www.liberai.cn/news"
     article_selector: "a[href*='/news']"
     importance: 3
     tier: 1
+    disabled: true  # 域名 DNS 解析失败，官网无新闻页
 
   # 学术实验室
   - id: web_mit_csail
@@ -467,6 +517,7 @@ web:
     article_selector: "a[href*='/news/']"
     importance: 4
     tier: 2
+    disabled: true  # 403 Forbidden，反爬
 
   - id: web_cmu_ri
     name: "CMU Robotics Institute"
@@ -474,6 +525,7 @@ web:
     article_selector: "a[href*='/ri-news/']"
     importance: 4
     tier: 2
+    disabled: true  # 文章列表 JS 渲染，无静态链接
 
   - id: web_eth_rsl
     name: "ETH Zurich RSL"
@@ -495,6 +547,42 @@ web:
     article_selector: "a[href*='/news']"
     importance: 4
     tier: 2
+    disabled: true  # JS渲染，无静态链接
+
+  - id: web_stanford_src
+    name: "Stanford Robotics Center News"
+    url: "https://src.stanford.edu/news"
+    article_selector: "a[href^='/press/']"
+    importance: 4
+    tier: 2
+
+  - id: web_imperial_robot_intel
+    name: "Imperial College Robot Intelligence Lab"
+    url: "https://www.imperial.ac.uk/a-z-research/robot-intelligence/news/"
+    article_selector: "a[href*='imperial.ac.uk/news/'][href*='-']"
+    importance: 3
+    tier: 2
+
+  - id: web_pku_ai
+    name: "北京大学智能学院"
+    url: "https://www.ai.pku.edu.cn/xwgg1/xwxx.htm"
+    article_selector: "a[href*='info/1086']"
+    importance: 4
+    tier: 2
+
+  - id: web_tsinghua_iiis
+    name: "清华大学交叉信息研究院"
+    url: "https://iiis.tsinghua.edu.cn/xwdt/yxdt.htm"
+    article_selector: "a[href*='info/1018']"
+    importance: 4
+    tier: 2
+
+  - id: web_hkust_ri
+    name: "香港科技大学机器人研究所"
+    url: "https://ri.hkust.edu.hk/news"
+    article_selector: "a[href*='ri.hkust.edu.hk/node/']"  # 文章链接为绝对URL，用 contains 而非 startswith
+    importance: 4
+    tier: 2
 
   # 中文科技媒体
   - id: web_leiphone_robot
@@ -503,3 +591,52 @@ web:
     article_selector: "a[href*='/news/']"
     importance: 3
     tier: 3
+
+  - id: web_jiqizhixin
+    name: "机器之心"
+    url: "https://www.jiqizhixin.com"
+    article_selector: "a[href*='/articles/'][href*='-']"  # 日期型 slug：/articles/YYYY-MM-DD-N
+    wait_selector: "a[href*='/articles/'][href*='-']"     # 等文章卡片渲染后再解析
+    importance: 4
+    tier: 2
+    use_browser: true  # CSR 页面，用 Playwright 渲染
+
+  # 专业媒体（海外）
+  - id: web_embodied_global
+    name: "Embodied Global"
+    url: "https://embodiedglobal.com"
+    article_selector: "a[href^='/'][href*='-']"
+    importance: 4
+    tier: 2
+    disabled: true  # 文章为 JS 渲染；已改用 RSS（id: embodied_global）
+
+  - id: web_humanoids_daily
+    name: "Humanoids Daily"
+    url: "https://www.humanoidsdaily.com"
+    article_selector: "a[href^='/'][href*='-']"
+    importance: 4
+    tier: 2
+
+  - id: web_robot_report
+    name: "The Robot Report"
+    url: "https://www.therobotreport.com"
+    article_selector: "a[href^='/'][href*='-']"
+    importance: 3
+    tier: 2
+    disabled: true  # 403 Forbidden 反爬
+
+  - id: web_ieee_spectrum
+    name: "IEEE Spectrum Robotics"
+    url: "https://spectrum.ieee.org/topic/robotics"
+    article_selector: "a[href^='/'][href*='-']"
+    importance: 4
+    tier: 2
+    disabled: true  # 文章为 JS 渲染；已改用 RSS（id: ieee_spectrum_robotics）
+
+  - id: web_techcrunch_cat
+    name: "TechCrunch Robotics (Web)"
+    url: "https://techcrunch.com/category/robotics"
+    article_selector: "a[href^='/20'][href*='-']"
+    importance: 3
+    tier: 2
+    disabled: true  # 分类页 JS 渲染；RSS（techcrunch_robotics）已有覆盖

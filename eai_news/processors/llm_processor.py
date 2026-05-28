@@ -18,6 +18,13 @@ _SYSTEM_PROMPT = """\
    - 若标题已是中文，直接保留或精简；is_relevant=false 时可填空字符串
 3. summary：is_relevant=true 时必填，用中文写2句摘要（合计≤80字），
    聚焦"谁做了什么 / 发布了什么 / 融了多少"；is_relevant=false 时可填空字符串
+4. importance：is_relevant=true 时必填，整数 0-10，评估新闻对具身智能行业从业者的重要程度
+   - 9-10：行业里程碑，头部公司重大融资（>5亿）、颠覆性产品首次亮相、大规模量产/商业化落地
+   - 7-8：重要事件，知名公司新品发布、重大合作/订单、大额融资、高管关键任命
+   - 5-6：常规资讯，中等融资、普通合作、产品迭代更新
+   - 3-4：边缘动态，小公司动态、技术论文、活动预告
+   - 1-2：几乎无价值，招聘信息、纯转载、无实质内容
+   - is_relevant=false 时填 0
 
 受众是具身智能行业从业者，不需要解释基础概念，术语无需注释。\
 """
@@ -46,8 +53,14 @@ _PROCESS_TOOL: dict = {
                             "type": "string",
                             "description": "2-sentence Chinese summary, ≤80 chars (required if is_relevant=true)",
                         },
+                        "importance": {
+                            "type": "integer",
+                            "description": "Importance score 0-10 (required if is_relevant=true, else 0)",
+                            "minimum": 0,
+                            "maximum": 10,
+                        },
                     },
-                    "required": ["id", "is_relevant", "title_zh", "summary"],
+                    "required": ["id", "is_relevant", "title_zh", "summary", "importance"],
                 },
             }
         },
@@ -130,6 +143,7 @@ class LLMProcessor:
                 continue
             item.title_zh = u.get("title_zh") or None
             item.summary = u.get("summary", item.summary)
+            item.importance = float(u.get("importance", 0))
             kept.append(item)
 
         return kept
