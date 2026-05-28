@@ -35,14 +35,12 @@
     ↓
 相关性粗筛（关键词评分 ≥ 5.0）
     ↓
-品类识别
-    ├─ Stage 1：关键词打分
-    └─ Stage 2：LLM 兜底（仅得分全为 0 时触发）
-    ↓
-Stage 3：LLM 内容处理（Claude Haiku，批量 15 条/次，Prompt Cache）
+LLM 内容处理（Claude Haiku，批量 15 条/次，Prompt Cache）
+    ├─ is_relevant：假阳性细筛，false 直接丢弃
     ├─ title_zh：中文标题（≤30字）
     ├─ summary：2句中文摘要（≤80字）
-    └─ tags：3-5 个标签（预设标签列表）
+    ├─ importance：重要性评分（0-10）
+    └─ category：品类识别（六大品类）
     ↓
 存储（SQLite + 飞书多维表格 / Excel）
 ```
