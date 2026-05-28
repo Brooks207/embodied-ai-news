@@ -366,7 +366,7 @@ sim2real / 仿真 / dataset / 数据集 / deployment / deploy
 
 ## 六、品类识别
 
-实现：`eai_news/filters/categorizer.py`
+品类识别已合并至 Stage 3 LLM batch call，不再有独立实现文件。
 
 ### 六大品类
 
@@ -380,22 +380,7 @@ sim2real / 仿真 / dataset / 数据集 / deployment / deploy
 | 政策 | `policy` | 政策文件、监管、补贴、标准 |
 | 其他 | `other` | 以上均不符合 |
 
-### 两阶段识别
-
-**Stage 1：关键词打分**
-
-```
-得分 = 命中关键词数 × 品类权重（当前均为 1.0）
-```
-
-取得分最高的品类。
-
-**Stage 2：LLM 兜底（仅所有品类得分均为 0 时触发）**
-
-调用 `claude-haiku-4-5` 对标题 + 正文前 300 字进行分类，返回品类 key。
-成本约 $0.0001/篇，API 失败时降级返回 `other`。
-
-此机制解决词库覆盖不足的问题，如公司使用 `unveil` `debut` `showcase` `reveal` 等高级词汇时仍能正确分类。
+LLM 在同一 batch call 中输出 `category` 字段（enum，见上表 key），FilterPipeline 阶段默认填 `other`，LLM 处理后覆盖写入。
 
 ---
 
@@ -412,6 +397,7 @@ sim2real / 仿真 / dataset / 数据集 / deployment / deploy
 | `title_zh` | 中文标题 | ≤30字，信息密度高 |
 | `summary` | 2句中文摘要 | ≤80字，聚焦"谁做了什么/融了多少" |
 | `importance` | 重要性评分 | 整数 0-10，见下方评分标准 |
+| `category` | 品类 | 六大品类 enum key，见第六节 |
 
 ### importance 评分标准
 
