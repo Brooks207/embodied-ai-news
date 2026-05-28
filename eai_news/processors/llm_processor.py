@@ -3,7 +3,7 @@ import json
 import anthropic
 from loguru import logger
 
-from ..models import NewsItem
+from ..models import NewsCategory, NewsItem
 
 BATCH_SIZE = 15
 
@@ -25,6 +25,15 @@ _SYSTEM_PROMPT = """\
    - 3-4：边缘动态，小公司动态、技术论文、活动预告
    - 1-2：几乎无价值，招聘信息、纯转载、无实质内容
    - is_relevant=false 时填 0
+5. category：is_relevant=true 时必填，从以下选项中选一个最符合的，填英文 key
+   - funding：融资、投资、估值、IPO、并购
+   - product：新品发布、产品迭代、Demo、量产、参数发布
+   - deployment：落地案例、商业部署、客户订单、工厂/仓储应用
+   - talent：人事变动、高管任命、招聘、团队动态
+   - supply_chain：供应链、零部件、执行器、芯片、成本
+   - policy：政策、监管、补贴、标准制定
+   - other：以上均不符合
+   - is_relevant=false 时填 other
 
 受众是具身智能行业从业者，不需要解释基础概念，术语无需注释。\
 """
@@ -59,8 +68,13 @@ _PROCESS_TOOL: dict = {
                             "minimum": 0,
                             "maximum": 10,
                         },
+                        "category": {
+                            "type": "string",
+                            "description": "News category key (required if is_relevant=true, else 'other')",
+                            "enum": ["funding", "product", "deployment", "talent", "supply_chain", "policy", "other"],
+                        },
                     },
-                    "required": ["id", "is_relevant", "title_zh", "summary", "importance"],
+                    "required": ["id", "is_relevant", "title_zh", "summary", "importance", "category"],
                 },
             }
         },
@@ -144,6 +158,11 @@ class LLMProcessor:
             item.title_zh = u.get("title_zh") or None
             item.summary = u.get("summary", item.summary)
             item.importance = float(u.get("importance", 0))
+            raw_cat = u.get("category", "other")
+            try:
+                item.category = NewsCategory(raw_cat)
+            except ValueError:
+                item.category = NewsCategory.OTHER
             kept.append(item)
 
         return kept

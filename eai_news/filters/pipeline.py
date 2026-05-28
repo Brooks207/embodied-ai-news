@@ -6,7 +6,6 @@ from ..models import RawItem, NewsItem, ItemStatus
 from ..config.settings import settings
 from .deduplicator import Deduplicator
 from .relevance_scorer import RelevanceScorer
-from .categorizer import Categorizer
 
 
 def _first_para(text: str, max_chars: int = 200) -> str:
@@ -31,7 +30,6 @@ class FilterPipeline:
     def __init__(self, existing_ids: set[str] | None = None):
         self._dedup = Deduplicator(existing_ids or set())
         self._scorer = RelevanceScorer()
-        self._categorizer = Categorizer()
 
     def process(self, items: list[RawItem]) -> list[NewsItem]:
         # 1. Recency filter — drop items older than max_age_hours
@@ -57,8 +55,6 @@ class FilterPipeline:
                 rejected += 1
                 continue
 
-            category = self._categorizer.categorize(raw)
-
             news_item = NewsItem(
                 id=str(uuid.uuid4()),
                 raw_item_id=raw.id,
@@ -67,7 +63,6 @@ class FilterPipeline:
                 title=raw.title,
                 title_zh=None,
                 summary="",
-                category=category,
                 relevance_score=score,
                 tags=[],
                 published_at=raw.published_at,
