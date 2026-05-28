@@ -58,23 +58,30 @@ async def test_rss(source: dict) -> dict:
 
 
 async def test_web(source: dict) -> dict:
-    if source.get("use_browser"):
+    collector_type = source.get("collector")
+    if collector_type == "jiqizhixin":
+        from eai_news.collectors.jiqizhixin_collector import JiqizhixinCollector
+        collector = JiqizhixinCollector()
+    elif collector_type == "galbot":
+        from eai_news.collectors.galbot_collector import GalbotCollector
+        collector = GalbotCollector()
+    elif source.get("use_browser"):
         from eai_news.collectors.playwright_crawler import PlaywrightCrawler
-        name     = source["name"]
-        sid      = source["id"]
-        url      = source["url"]
-        selector = source.get("article_selector", "a[href]")
-        allow_ext = source.get("allow_external", False)
-        wait_sel  = source.get("wait_selector")
-        collector = PlaywrightCrawler(sid, name, url, selector, allow_ext, wait_sel)
+        collector = PlaywrightCrawler(
+            source["id"], source["name"], source["url"],
+            source.get("article_selector", "a[href]"),
+            source.get("allow_external", False),
+            source.get("wait_selector"),
+        )
     else:
         from eai_news.collectors.web_crawler import WebCrawler
-        name     = source["name"]
-        sid      = source["id"]
-        url      = source["url"]
-        selector = source.get("article_selector", "a[href]")
-        allow_ext = source.get("allow_external", False)
-        collector = WebCrawler(sid, name, url, selector, allow_ext)
+        collector = WebCrawler(
+            source["id"], source["name"], source["url"],
+            source.get("article_selector", "a[href]"),
+            source.get("allow_external", False),
+        )
+    name = source["name"]
+    sid  = source["id"]
     t0 = time.monotonic()
     try:
         items = await collector.fetch()

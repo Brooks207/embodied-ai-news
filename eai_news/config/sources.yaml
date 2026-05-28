@@ -67,6 +67,12 @@ rss:
     importance: 4
     tier: 2
 
+  - id: cmu_ri_news
+    name: "CMU Robotics Institute"
+    url: "https://www.ri.cmu.edu/feed/?post_type=ri-news"
+    importance: 4
+    tier: 2
+
 # ─────────────────────────────────────────
 # Twitter / X 账号
 # ─────────────────────────────────────────
@@ -481,6 +487,13 @@ web:
     tier: 1
     disabled: true  # JS渲染，静态爬虫无法获取文章列表
 
+  - id: web_galbot
+    name: "银河通用官网"
+    url: "https://www.galbot.com/news"
+    importance: 4
+    tier: 1
+    collector: galbot  # POST https://api.galbot.com/api/v1/web/news/list，无需浏览器
+
   - id: web_agibot
     name: "自变量（AGIBOT）官网"
     url: "https://agibot.com/news"
@@ -494,6 +507,15 @@ web:
     article_selector: "a[href*='/news/']"
     importance: 4
     tier: 1
+
+  - id: web_ubtech
+    name: "优必选官网"
+    url: "https://www.ubtrobot.com/cn/news-list"
+    article_selector: "a[href*='mp.weixin.qq.com']"
+    allow_external: true
+    importance: 4
+    tier: 1
+    use_browser: true  # JS 渲染；文章为微信外链
 
   - id: web_liberai
     name: "将闲科技 LiberAI"
@@ -525,7 +547,7 @@ web:
     article_selector: "a[href*='/ri-news/']"
     importance: 4
     tier: 2
-    disabled: true  # 文章列表 JS 渲染，无静态链接
+    disabled: true  # 文章列表 JS 渲染；已改用 RSS（id: cmu_ri_news）
 
   - id: web_eth_rsl
     name: "ETH Zurich RSL"
@@ -595,11 +617,9 @@ web:
   - id: web_jiqizhixin
     name: "机器之心"
     url: "https://www.jiqizhixin.com"
-    article_selector: "a[href*='/articles/'][href*='-']"  # 日期型 slug：/articles/YYYY-MM-DD-N
-    wait_selector: "a[href*='/articles/'][href*='-']"     # 等文章卡片渲染后再解析
     importance: 4
     tier: 2
-    use_browser: true  # CSR 页面，用 Playwright 渲染
+    collector: jiqizhixin  # 专用采集器：Playwright 拦截 /api/article_library/articles.json
 
   # 专业媒体（海外）
   - id: web_embodied_global

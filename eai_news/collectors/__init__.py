@@ -12,6 +12,8 @@ from .youtube_collector import YouTubeCollector
 from .weibo_collector import WeiboCollector
 from .web_crawler import WebCrawler
 from .playwright_crawler import PlaywrightCrawler
+from .jiqizhixin_collector import JiqizhixinCollector
+from .galbot_collector import GalbotCollector
 from ..models import RawItem
 
 _SOURCES_PATH = Path(__file__).parent.parent / "config" / "sources.yaml"
@@ -53,7 +55,12 @@ def build_collectors() -> list[tuple[BaseCollector, int, int]]:
     for src in cfg.get("web", []):
         if src.get("disabled"):
             continue
-        if src.get("use_browser"):
+        collector_type = src.get("collector")
+        if collector_type == "jiqizhixin":
+            collectors.append((JiqizhixinCollector(), src.get("tier", 2), src.get("importance", 3)))
+        elif collector_type == "galbot":
+            collectors.append((GalbotCollector(), src.get("tier", 1), src.get("importance", 4)))
+        elif src.get("use_browser"):
             collectors.append((PlaywrightCrawler(
                 src["id"], src["name"], src["url"],
                 article_selector=src.get("article_selector", "a[href]"),

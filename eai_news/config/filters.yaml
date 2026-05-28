@@ -284,6 +284,8 @@ source_bonus:
 
   # ── tier-1 公司官方 web（importance=4）→ 自动通过 ──
   web_agibot: 4.0
+  web_galbot: 4.0
+  web_ubtech: 4.0
   web_lejuu: 4.0
   web_spirit_ai: 4.0
   web_fourier: 4.0
@@ -304,7 +306,8 @@ source_bonus:
   # ── 纯机器人实验室官网（importance=4）→ 自动通过 ──
   web_eth_rsl: 4.0
   web_tri: 4.0
-  web_cmu_ri: 3.5
+  web_cmu_ri: 3.5      # web版已禁用
+  cmu_ri_news: 3.5     # RSS版
 
   # ── 综合学术机构（需关键词过滤，加 bonus 降低误杀）──
   bair_blog: 2.0
