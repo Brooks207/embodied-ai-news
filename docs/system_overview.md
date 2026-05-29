@@ -50,7 +50,7 @@ title_zh 跨语言去重（Stage 3，对比近3天已入库中文标题）
 存储（SQLite + 飞书多维表格 / Excel）
 ```
 
-**调度方式**：APScheduler，默认每 2 小时触发一次完整流程（可在 `.env` 调整 `COLLECT_INTERVAL_HOURS`）。
+**调度方式**：APScheduler，每天 **11:00（Asia/Shanghai）** 触发一次完整流程（可在 `.env` 调整 `COLLECT_HOUR`，默认 `11`）。
 日志路径：`eai_news/data/logs/eai_news_YYYY-MM-DD.log`
 
 ---
