@@ -66,6 +66,7 @@ def build_collectors() -> list[tuple[BaseCollector, int, int]]:
                 article_selector=src.get("article_selector", "a[href]"),
                 allow_external=src.get("allow_external", False),
                 wait_selector=src.get("wait_selector"),
+                full_browser=src.get("full_browser", False),
             ), src.get("tier", 2), src.get("importance", 3)))
         else:
             collectors.append((WebCrawler(

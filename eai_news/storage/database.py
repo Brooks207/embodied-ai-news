@@ -19,7 +19,12 @@ class Database:
         async with aiosqlite.connect(self.db_path) as db:
             schema = _SCHEMA_PATH.read_text()
             await db.executescript(schema)
-            await db.commit()
+            try:
+                await db.execute("ALTER TABLE news_items ADD COLUMN importance REAL NOT NULL DEFAULT 0")
+                await db.commit()
+                logger.info("Database migrated: added importance column")
+            except Exception:
+                pass  # column already exists
         logger.info(f"Database initialised at {self.db_path}")
 
     async def get_existing_raw_ids(self, since_days: int = 30) -> set[str]:
@@ -69,7 +74,7 @@ class Database:
             (
                 item.id, item.raw_item_id, item.source_name, item.url, item.title,
                 item.title_zh, item.summary, item.category.value,
-                item.relevance_score, json.dumps(item.tags),
+                item.relevance_score, item.importance, json.dumps(item.tags),
                 item.published_at.isoformat() if item.published_at else None,
                 item.created_at.isoformat(),
             )
@@ -79,8 +84,8 @@ class Database:
             await db.executemany(
                 """INSERT OR IGNORE INTO news_items
                    (id, raw_item_id, source_name, url, title, title_zh, summary,
-                    category, relevance_score, tags, published_at, created_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    category, relevance_score, importance, tags, published_at, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 rows,
             )
             await db.commit()
@@ -94,6 +99,24 @@ class Database:
             )
             await db.commit()
 
+    async def update_news_item_importance(self, item_id: str, importance: float) -> None:
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                "UPDATE news_items SET importance=? WHERE id=?",
+                (importance, item_id),
+            )
+            await db.commit()
+
+    async def get_news_items_by_ids(self, ids: list[str]) -> list[dict]:
+        placeholders = ",".join("?" * len(ids))
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                f"SELECT * FROM news_items WHERE id IN ({placeholders})", ids
+            ) as cur:
+                rows = await cur.fetchall()
+        return [dict(r) for r in rows]
+
     async def get_unprocessed_news(self, limit: int = 100) -> list[dict]:
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
@@ -103,6 +126,46 @@ class Database:
             ) as cur:
                 rows = await cur.fetchall()
         return [dict(r) for r in rows]
+
+    async def get_recent_news_titles(self, since_days: int = 3) -> list[tuple[str, "datetime | None"]]:
+        """Return (title, published_at) for accepted news_items from the last N days."""
+        cutoff = (datetime.utcnow() - timedelta(days=since_days)).isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute(
+                "SELECT title, published_at FROM news_items WHERE created_at >= ?",
+                (cutoff,),
+            ) as cur:
+                rows = await cur.fetchall()
+        result = []
+        for title, pub_str in rows:
+            pub = None
+            if pub_str:
+                try:
+                    pub = datetime.fromisoformat(pub_str)
+                except Exception:
+                    pass
+            result.append((title, pub))
+        return result
+
+    async def get_recent_news_titles_zh(self, since_days: int = 3) -> list[tuple[str, "datetime | None"]]:
+        """Return (title_zh, published_at) for accepted news_items with a Chinese title."""
+        cutoff = (datetime.utcnow() - timedelta(days=since_days)).isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute(
+                "SELECT title_zh, published_at FROM news_items WHERE created_at >= ? AND title_zh IS NOT NULL",
+                (cutoff,),
+            ) as cur:
+                rows = await cur.fetchall()
+        result = []
+        for title_zh, pub_str in rows:
+            pub = None
+            if pub_str:
+                try:
+                    pub = datetime.fromisoformat(pub_str)
+                except Exception:
+                    pass
+            result.append((title_zh, pub))
+        return result
 
     async def get_recent_news(self, limit: int = 50, category: str | None = None) -> list[dict]:
         sql = "SELECT * FROM news_items"

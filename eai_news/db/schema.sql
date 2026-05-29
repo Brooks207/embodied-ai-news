@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS news_items (
     summary         TEXT DEFAULT '', -- Chinese summary (Phase 3)
     category        TEXT NOT NULL DEFAULT 'other',
     relevance_score REAL NOT NULL DEFAULT 0,
+    importance      REAL NOT NULL DEFAULT 0,
     tags            TEXT DEFAULT '[]',  -- JSON array
     published_at    TIMESTAMP,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

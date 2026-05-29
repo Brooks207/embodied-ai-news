@@ -16,7 +16,7 @@ from loguru import logger
 
 from ..models import RawItem
 from .base import BaseCollector
-from .web_crawler import HEADERS, _extract_first_para, _extract_title
+from .web_crawler import HEADERS, _build_url_date_map, _extract_date_from_card, _extract_first_para, _extract_published_date, _extract_title
 
 # ── 全局 Chromium 实例（懒加载，进程内共享）────────────────────────────
 _browser = None
@@ -73,6 +73,7 @@ class PlaywrightCrawler(BaseCollector):
         article_selector: str = "a[href]",
         allow_external: bool = False,
         wait_selector: str | None = None,
+        full_browser: bool = False,
     ):
         self.source_id = source_id
         self.source_name = source_name
@@ -80,6 +81,7 @@ class PlaywrightCrawler(BaseCollector):
         self.article_selector = article_selector
         self.allow_external = allow_external
         self.wait_selector = wait_selector  # 出现后才开始解析
+        self.full_browser = full_browser    # 文章详情页也用 Playwright 渲染
         self._base = f"{urlparse(index_url).scheme}://{urlparse(index_url).netloc}"
 
     async def fetch(self) -> list[RawItem]:
@@ -122,6 +124,7 @@ class PlaywrightCrawler(BaseCollector):
         links = soup.select(self.article_selector)
         seen_urls: set[str] = set()
         items: list[RawItem] = []
+        url_date_map = _build_url_date_map(html)
 
         for tag in links[:40]:
             href = tag.get("href", "")
@@ -140,6 +143,7 @@ class PlaywrightCrawler(BaseCollector):
                 continue
 
             seen_urls.add(full_url)
+            published_at = _extract_date_from_card(tag) or url_date_map.get(full_url)
             items.append(
                 RawItem(
                     source_id=self.source_id,
@@ -147,7 +151,7 @@ class PlaywrightCrawler(BaseCollector):
                     url=full_url,
                     title=title[:200],
                     content="",
-                    published_at=None,
+                    published_at=published_at,
                     raw_metadata={"index_url": self.index_url},
                 )
             )
@@ -160,11 +164,15 @@ class PlaywrightCrawler(BaseCollector):
         return items
 
     async def _fill_content(self, items: list[RawItem]) -> None:
-        async with httpx.AsyncClient(
-            timeout=15, headers=HEADERS, follow_redirects=True
-        ) as client:
-            tasks = [self._fetch_one_content(client, item) for item in items]
+        if self.full_browser:
+            tasks = [self._fetch_one_content_browser(item) for item in items]
             await asyncio.gather(*tasks)
+        else:
+            async with httpx.AsyncClient(
+                timeout=15, headers=HEADERS, follow_redirects=True
+            ) as client:
+                tasks = [self._fetch_one_content(client, item) for item in items]
+                await asyncio.gather(*tasks)
 
     async def _fetch_one_content(
         self, client: httpx.AsyncClient, item: RawItem
@@ -173,7 +181,33 @@ class PlaywrightCrawler(BaseCollector):
             resp = await client.get(item.url)
             resp.raise_for_status()
             item.content = _extract_first_para(resp.text)
+            if item.published_at is None:
+                item.published_at = _extract_published_date(resp.text, item.url)
         except Exception as e:
             logger.debug(
                 f"[{self.source_name}] content fetch failed for {item.url}: {e}"
             )
+
+    async def _fetch_one_content_browser(self, item: RawItem) -> None:
+        """Render article detail page with Playwright (for fully CSR sites)."""
+        browser = await _get_browser()
+        async with _PAGE_SEM:
+            context = await browser.new_context(
+                user_agent=HEADERS["User-Agent"],
+                locale="en-US",
+                extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
+            )
+            try:
+                page = await context.new_page()
+                await page.goto(item.url, wait_until="networkidle", timeout=20_000)
+                html = await page.content()
+            except Exception as e:
+                logger.debug(
+                    f"[{self.source_name}] Playwright article fetch failed for {item.url}: {e}"
+                )
+                return
+            finally:
+                await context.close()
+        item.content = _extract_first_para(html)
+        if item.published_at is None:
+            item.published_at = _extract_published_date(html, item.url)

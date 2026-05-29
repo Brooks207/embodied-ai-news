@@ -18,7 +18,7 @@ def _first_para(text: str, max_chars: int = 200) -> str:
 
 def _is_stale(item: RawItem, max_age_hours: int) -> bool:
     if item.published_at is None:
-        return False
+        return True
     pub = item.published_at
     if pub.tzinfo is None:
         pub = pub.replace(tzinfo=timezone.utc)
@@ -27,8 +27,12 @@ def _is_stale(item: RawItem, max_age_hours: int) -> bool:
 
 
 class FilterPipeline:
-    def __init__(self, existing_ids: set[str] | None = None):
-        self._dedup = Deduplicator(existing_ids or set())
+    def __init__(
+        self,
+        existing_ids: set[str] | None = None,
+        existing_titles: list[tuple[str, "datetime | None"]] | None = None,
+    ):
+        self._dedup = Deduplicator(existing_ids or set(), existing_titles)
         self._scorer = RelevanceScorer()
 
     def process(self, items: list[RawItem]) -> list[NewsItem]:

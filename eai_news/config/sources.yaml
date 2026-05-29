@@ -21,7 +21,7 @@ rss:
 
   - id: techcrunch_robotics
     name: "TechCrunch Robotics"
-    url: "https://techcrunch.com/tag/robotics/feed/"
+    url: "https://techcrunch.com/category/robotics/feed/"
     importance: 3
     tier: 2
 
@@ -383,6 +383,8 @@ web:
     article_selector: "a[href*='/news-collection/']"
     importance: 4
     tier: 1
+    use_browser: true
+    full_browser: true  # 详情页也是CSR，用Playwright渲染取日期
 
   - id: web_fourier
     name: "傅利叶智能官网"
@@ -420,6 +422,7 @@ web:
     article_selector: "a[href*='/the-latest/']"
     importance: 3
     tier: 1
+    disabled: true  # 约1年停更（最新文章 ~423天前）
 
   - id: web_agility_robotics
     name: "Agility Robotics Press"
@@ -427,6 +430,8 @@ web:
     article_selector: "a[href*='/content/']"
     importance: 4
     tier: 1
+    use_browser: true
+    full_browser: true  # 详情页也是CSR，用Playwright渲染取日期
 
   - id: web_dexterity_ai
     name: "Dexterity AI Blog"
@@ -448,6 +453,8 @@ web:
     article_selector: "a[href*='/blog/posts/']"
     importance: 4
     tier: 1
+    use_browser: true
+    full_browser: true  # 详情页也是CSR，用Playwright渲染取日期
 
   - id: web_schunk
     name: "SCHUNK News"
@@ -507,6 +514,7 @@ web:
     article_selector: "a[href*='/news/']"
     importance: 4
     tier: 1
+    disabled: true  # JS渲染，详情页也是CSR；需专用collector才能取到日期
 
   - id: web_ubtech
     name: "优必选官网"
@@ -584,6 +592,7 @@ web:
     article_selector: "a[href*='imperial.ac.uk/news/'][href*='-']"
     importance: 3
     tier: 2
+    disabled: true  # 页面展示2017年旧文章，无近期内容
 
   - id: web_pku_ai
     name: "北京大学智能学院"
@@ -613,6 +622,7 @@ web:
     article_selector: "a[href*='/news/']"
     importance: 3
     tier: 3
+    disabled: true  # 页面展示2017年旧文章，无近期内容
 
   - id: web_jiqizhixin
     name: "机器之心"

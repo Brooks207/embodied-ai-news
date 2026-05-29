@@ -56,6 +56,7 @@ class FeishuTableStorage:
             "中文标题": title_display,
             "分类": category_label,
             "相关性评分": item.relevance_score,
+            "重要性评分": item.importance,
         }
         if ts_ms:
             fields["时间"] = ts_ms
@@ -100,6 +101,7 @@ class FeishuTableStorage:
                 {"name": "中国"}, {"name": "海外"},
             ]}),
             ("相关性评分", 2, None),
+            ("重要性评分", 2, None),
         ]
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
@@ -130,3 +132,64 @@ class FeishuTableStorage:
                 logger.warning(f"[Feishu] failed to save {item.url}: {e}")
                 fail += 1
         logger.info(f"[Feishu] batch done — ok={ok}, fail={fail}")
+
+    async def list_records(self, page_size: int = 500) -> list[dict]:
+        """返回表中所有记录，每条含 record_id 和 fields。"""
+        token = await self._get_token()
+        records = []
+        page_token = None
+        async with httpx.AsyncClient(timeout=15) as client:
+            while True:
+                params: dict = {"page_size": page_size}
+                if page_token:
+                    params["page_token"] = page_token
+                resp = await client.get(
+                    f"{FEISHU_BASE}/bitable/v1/apps/{self.app_token}/tables/{self.table_id}/records",
+                    headers={"Authorization": f"Bearer {token}"},
+                    params=params,
+                )
+                resp.raise_for_status()
+                data = resp.json().get("data", {})
+                records.extend(data.get("items", []))
+                if not data.get("has_more"):
+                    break
+                page_token = data.get("page_token")
+        return records
+
+    async def delete_all_records(self) -> int:
+        """删除表中所有记录，返回删除总数。"""
+        records = await self.list_records()
+        if not records:
+            return 0
+        token = await self._get_token()
+        deleted = 0
+        batch = 500
+        async with httpx.AsyncClient(timeout=30) as client:
+            for i in range(0, len(records), batch):
+                ids = [r["record_id"] for r in records[i:i + batch]]
+                resp = await client.post(
+                    f"{FEISHU_BASE}/bitable/v1/apps/{self.app_token}/tables/{self.table_id}/records/batch_delete",
+                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                    json={"records": ids},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                if data.get("code") != 0:
+                    raise RuntimeError(f"Feishu batch_delete failed: {data.get('msg')}")
+                deleted += len(ids)
+        return deleted
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    async def update_record(self, record_id: str, fields: dict):
+        """PUT 单条记录的指定字段（飞书 bitable 记录更新用 PUT）。"""
+        token = await self._get_token()
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.put(
+                f"{FEISHU_BASE}/bitable/v1/apps/{self.app_token}/tables/{self.table_id}/records/{record_id}",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json={"fields": fields},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        if data.get("code") != 0:
+            raise RuntimeError(f"Feishu update failed: {data.get('msg')} | record={record_id}")

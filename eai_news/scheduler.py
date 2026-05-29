@@ -8,6 +8,7 @@ from loguru import logger
 from .config.settings import settings
 from .collectors import run_all_collectors
 from .filters.pipeline import FilterPipeline
+from .filters.deduplicator import dedup_by_title_zh
 from .storage import get_db, save_batch
 
 
@@ -17,15 +18,16 @@ async def run_collection():
         # 1. Fetch raw items
         raw_items = await run_all_collectors()
 
-        # 2. Get existing IDs for dedup (last 30 days)
+        # 2. Get existing data for dedup (last 30 days IDs + last 3 days titles)
         db = get_db()
         existing_ids = await db.get_existing_raw_ids()
+        existing_titles = await db.get_recent_news_titles(since_days=3)
 
         # 3. Save all raw items (for audit trail)
         await db.save_raw_items_batch(raw_items)
 
-        # 4. Filter
-        pipeline = FilterPipeline(existing_ids=existing_ids)
+        # 4. Filter (recency + URL dedup + title dedup against history)
+        pipeline = FilterPipeline(existing_ids=existing_ids, existing_titles=existing_titles)
         news_items = pipeline.process(raw_items)
 
         # 5. LLM processing (translate + summarise + tag)
@@ -35,6 +37,11 @@ async def run_collection():
             news_items = await processor.process(news_items)
         elif news_items:
             logger.warning("ANTHROPIC_API_KEY not set — skipping LLM processing")
+
+        # 5b. Post-LLM title_zh dedup（跨语言跨批次同事件去重）
+        if news_items:
+            existing_zh = await db.get_recent_news_titles_zh(since_days=3)
+            news_items = dedup_by_title_zh(news_items, existing_zh)
 
         # 6. Save accepted items
         await save_batch(news_items)
