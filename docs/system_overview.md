@@ -1,6 +1,6 @@
 # EAI 新闻自动化系统 — 技术流程说明
 
-> 文档版本：2026-05-28 v10
+> 文档版本：2026-05-29 v11
 > 项目路径：`/Users/blueye/Desktop/News`
 > GitHub：`https://github.com/Brooks207/embodied-ai-news`
 
@@ -20,6 +20,7 @@
 | v8 | 2026-05-28 | 新增 6 个媒体信源（机器之心、Embodied Global、Humanoids Daily、The Robot Report、IEEE Spectrum、TechCrunch Web）|
 | v9 | 2026-05-28 | Stage 3 LLM 新增 `importance` 字段（0-10），四字段合并为一次 batch 调用；双轨发文策略（≥7 单独发文，<7 攒 digest）|
 | v10 | 2026-05-28 | Playwright 无头浏览器基础设施上线；机器之心（API 响应拦截）、优必选（Playwright + 微信外链）✅ 接入；银河通用（httpx POST API）✅ 接入；RSS 新增 Embodied Global / IEEE Spectrum / CMU RI；Playwright 探测所有 disabled JS 渲染源（Sanctuary AI / Engineered Arts / 星动纪元 / BAAI 均无解）；微信公众号采集评估后确认不可行 |
+| v11 | 2026-05-29 | **72h 时效性全量审计**：TechCrunch RSS feed URL 修正（tag/ → category/）；禁用 RightHand Robotics（停更1年）、雷锋网（2017旧文章）、Imperial College（无近期内容）；禁用 4 个纯 CSR 源（Apptronik / Agility Robotics / Intrinsic / 千寻智能）再探测后以 `full_browser` 模式重新接入前3个（Playwright 渲染文章详情页 + `_MONTH_DATE_RE` 英文月份日期提取）；LLM `max_tokens` 2048→4096（修复 batch 截断导致 title_zh / category 大量缺失）；去重升级为三层：阈值 0.70→0.45、跨批次历史标题种子、LLM 后 title_zh 跨语言去重；飞书新增 `delete_all_records()` 批量清空接口 |
 
 ---
 
@@ -28,11 +29,12 @@
 ```
 信息采集（多源并发）
     ↓
-时效过滤（丢弃 >72h 的条目，published_at=None 放行）
+时效过滤（丢弃 >72h 或 published_at=None 的条目）
     ↓
-两阶段去重
+三阶段去重
     ├─ Stage 1：URL 哈希去重（跨批次，查近 30 天 DB）
-    └─ Stage 2：标题模糊去重（批次内，48h 窗口，tier 优先）
+    ├─ Stage 2：标题模糊去重（批次内 + 近3天历史标题种子，阈值0.45，48h 窗口，tier 优先）
+    └─（LLM 后）Stage 3：title_zh 去重（跨语言同事件合并）
     ↓
 相关性粗筛（关键词评分 ≥ 5.0）
     ↓
@@ -42,6 +44,8 @@ LLM 内容处理（Claude Haiku，批量 15 条/次，Prompt Cache）
     ├─ summary：2句中文摘要（≤80字）
     ├─ importance：重要性评分（0-10）
     └─ category：品类识别（六大品类）
+    ↓
+title_zh 跨语言去重（Stage 3，对比近3天已入库中文标题）
     ↓
 存储（SQLite + 飞书多维表格 / Excel）
 ```
@@ -175,16 +179,17 @@ LLM 内容处理（Claude Haiku，批量 15 条/次，Prompt Cache）
 
 ### 2.5 网站爬虫（共 36 个活跃）
 
-采集器根据 `sources.yaml` 中的标志自动路由到以下三类实现：
+采集器根据 `sources.yaml` 中的标志自动路由到以下实现：
 
 | 标志 | 采集器类 | 适用场景 |
 |------|---------|---------|
 | 无（默认） | `WebCrawler` | httpx 静态抓取，解析 `<a href>` |
-| `use_browser: true` | `PlaywrightCrawler` | Chromium 渲染后解析 DOM |
+| `use_browser: true` | `PlaywrightCrawler` | Chromium 渲染列表页后解析 DOM |
+| `use_browser: true` + `full_browser: true` | `PlaywrightCrawler` | 列表页 + 文章详情页均用 Playwright 渲染（用于文章详情页也是 CSR 的站点） |
 | `collector: jiqizhixin` | `JiqizhixinCollector` | Playwright 拦截 API 响应 |
 | `collector: galbot` | `GalbotCollector` | httpx 直调 REST API（无浏览器）|
 
-所有爬虫对前 5 条链接额外抓取文章页，用 `trafilatura` 提取正文首段（≤200字）。
+所有爬虫对前 5 条链接额外抓取文章页，用 `trafilatura` 提取正文首段（≤200字）。`full_browser` 模式下文章页也用 Playwright 渲染，再走 `_extract_published_date` 提取日期（含新增的 `_MONTH_DATE_RE` 步骤，识别 `"April 28, 2026"` 格式的英文月份名称日期）。
 
 #### Playwright 基础设施
 
@@ -193,28 +198,28 @@ LLM 内容处理（Claude Haiku，批量 15 条/次，Prompt Cache）
 - 全局单例 Chromium 进程（懒加载，进程内共享）
 - `asyncio.Semaphore(2)` 限制同时活跃页面数
 - 进程退出时调用 `close_browser()` 释放资源
-- 当前使用 Playwright 的 active sources：**机器之心**（API 拦截）、**优必选**（DOM 解析 + 微信外链）
+- 当前使用 Playwright 的 active sources：**机器之心**（API 拦截）、**优必选**（DOM 解析 + 微信外链）、**Apptronik / Agility Robotics / Intrinsic**（`full_browser` 模式）
 
-**海外公司官网（12 个活跃，2 个已禁用，tier 1）**
+**海外公司官网（11 个活跃，3 个已禁用，tier 1）**
 
-| 来源 | URL | 备注 |
-|------|-----|------|
-| Figure AI | `figure.ai/news` | ✅ |
-| Physical Intelligence | `physicalintelligence.company/blog` | ✅ |
-| 1X Technologies | `1x.tech/discover` | ✅ |
-| Apptronik | `apptronik.com/press-release` | ✅ |
-| Skild AI | `skild.ai/blogs` | ✅ |
-| RightHand Robotics | `righthandrobotics.com/the-latest` | ✅ |
-| SCHUNK | `schunk.com/us/en/latest-news/news` | ✅ |
-| Agility Robotics | `agilityrobotics.com/press-releases` | ✅ |
-| Dexterity AI | `dexterity.ai/blog` | ✅ |
-| Boston Dynamics | `bostondynamics.com/blog` | ✅ |
-| Intrinsic | `intrinsic.ai/blog` | ✅ |
-| Fourier Intelligence | `fftai.com/newsroom` | ✅ |
-| Sanctuary AI | `sanctuaryai.com/news` | ❌ disabled（Cloudflare 拦截，Playwright 同样失效） |
-| Engineered Arts | `engineeredarts.co.uk/blog` | ❌ disabled（Playwright 只拿到 1 个 WordPress CDN 链接，RSS 也返回 HTML） |
+| 来源 | URL | 采集方式 | 备注 |
+|------|-----|---------|------|
+| Figure AI | `figure.ai/news` | 静态爬虫 | ✅ |
+| Physical Intelligence | `physicalintelligence.company/blog` | 静态爬虫 | ✅ |
+| 1X Technologies | `1x.tech/discover` | 静态爬虫 | ✅ |
+| Apptronik | `apptronik.com/press-release` | `full_browser` | ✅ 详情页 CSR，Playwright 渲染取日期 |
+| Skild AI | `skild.ai/blogs` | 静态爬虫 | ✅ |
+| SCHUNK | `schunk.com/us/en/latest-news/news` | 静态爬虫 | ✅ |
+| Agility Robotics | `agilityrobotics.com/press-releases` | `full_browser` | ✅ 详情页 CSR，Playwright 渲染取日期 |
+| Dexterity AI | `dexterity.ai/blog` | 静态爬虫 | ✅ |
+| Boston Dynamics | `bostondynamics.com/blog` | 静态爬虫 | ✅ |
+| Intrinsic | `intrinsic.ai/blog` | `full_browser` | ✅ 详情页 CSR，Playwright 渲染取日期 |
+| Fourier Intelligence | `fftai.com/newsroom` | 静态爬虫 | ✅ |
+| RightHand Robotics | `righthandrobotics.com/the-latest` | — | ❌ disabled（约1年停更） |
+| Sanctuary AI | `sanctuaryai.com/news` | — | ❌ disabled（Cloudflare 拦截，Playwright 同样失效） |
+| Engineered Arts | `engineeredarts.co.uk/blog` | — | ❌ disabled（Playwright 只拿到 1 个 WordPress CDN 链接，RSS 也返回 HTML） |
 
-**中国公司官网（8 个活跃，2 个已禁用，tier 1）**
+**中国公司官网（7 个活跃，3 个已禁用，tier 1）**
 
 | 来源 | URL | 采集方式 | 备注 |
 |------|-----|---------|------|
@@ -223,13 +228,13 @@ LLM 内容处理（Claude Haiku，批量 15 条/次，Prompt Cache）
 | 傅利叶智能 | `fftai.com/newsroom` | 静态爬虫 | ✅ |
 | 乐聚机器人 | `lejurobot.com/news/latest-news` | 静态爬虫 + allow_external | ✅ 文章链接到微信/CCTV |
 | 自变量 AGIBOT | `agibot.com/news` | 静态爬虫 | ✅ |
-| 千寻智能 | `spirit-ai.com/news` | 静态爬虫 | ✅ |
 | 银河通用 | `galbot.com/news` | `GalbotCollector` | ✅ POST `api.galbot.com/api/v1/web/news/list`，20 条/次，无需浏览器 |
 | 优必选 | `ubtrobot.com/cn/news-list` | `PlaywrightCrawler` | ✅ Playwright 渲染 + 微信外链，40 条/次 |
+| 千寻智能 | `spirit-ai.com/news` | — | ❌ disabled（列表页和详情页均无任何日期标记，Playwright 也无解） |
 | 星动纪元 | `astribot.com/news` | — | ❌ disabled（Playwright 仅拿到导航链接，无 RSS） |
 | 将闲科技 LiberAI | `liberai.cn/news` | — | ❌ disabled（DNS 解析失败） |
 
-**学术实验室（8 个活跃，3 个已禁用，tier 2）**
+**学术实验室（7 个活跃，4 个已禁用，tier 2）**
 
 | 来源 | URL | 备注 |
 |------|-----|------|
@@ -237,24 +242,24 @@ LLM 内容处理（Claude Haiku，批量 15 条/次，Prompt Cache）
 | ETH Zurich RSL | `rsl.ethz.ch/the-lab/news.html` | ✅ |
 | 上海人工智能实验室 | `shlab.org.cn/info` | ✅ |
 | Stanford Robotics Center | `src.stanford.edu/news` | ✅ |
-| Imperial College Robot Intelligence | `imperial.ac.uk/.../robot-intelligence/news/` | ✅ |
 | 北京大学智能学院 | `ai.pku.edu.cn/xwgg1/xwxx.htm` | ✅ |
 | 清华大学交叉信息研究院 | `iiis.tsinghua.edu.cn/xwdt/yxdt.htm` | ✅ |
 | 香港科技大学机器人研究所 | `ri.hkust.edu.hk/news` | ✅ selector `a[href*='ri.hkust.edu.hk/node/']` |
+| Imperial College Robot Intelligence | `imperial.ac.uk/.../robot-intelligence/news/` | ❌ disabled（页面展示2017年旧文章，无近期内容） |
 | Toyota Research Institute | `tri.global/news` | ❌ disabled（403 反爬） |
 | CMU Robotics Institute | `ri.cmu.edu/news/` | ❌ disabled（Playwright 无文章链接；已改用 RSS） |
 | 北京智源研究院 BAAI | `baai.ac.cn/news.html` | ❌ disabled（Playwright 仅导航链接；RSS URL 返回 HTML） |
 
-**媒体（9 个活跃，4 个已禁用，tier 2-3）**
+**媒体（8 个活跃，5 个已禁用，tier 2-3）**
 
 | 来源 | Tier | 采集方式 | 备注 |
 |------|------|---------|------|
-| 雷锋网 机器人 | 3 | 静态爬虫 | ✅ |
 | 机器之心 | 2 | `JiqizhixinCollector` | ✅ Playwright 拦截 `/api/article_library/articles.json`，20 条/次，时间从 slug 提取 |
 | Humanoids Daily | 2 | 静态爬虫 | ✅ |
 | Embodied Global | 2 | RSS | ✅ 网站 JS 渲染，改用 RSS |
 | IEEE Spectrum Robotics | 2 | RSS | ✅ 网站 JS 渲染，改用 RSS |
-| TechCrunch Robotics | 2 | RSS | ✅ 分类页 JS 渲染，RSS 已覆盖（`techcrunch_robotics`） |
+| TechCrunch Robotics | 2 | RSS | ✅ feed URL 已修正为 `category/robotics/feed/` |
+| 雷锋网 机器人 | 3 | — | ❌ disabled（页面展示2017年旧文章，无近期内容） |
 | The Robot Report | 2 | — | ❌ disabled（403 反爬） |
 | Embodied Global Web | 2 | — | ❌ disabled（JS 渲染；RSS 已覆盖） |
 | IEEE Spectrum Web | 2 | — | ❌ disabled（JS 渲染；RSS 已覆盖） |
@@ -270,9 +275,11 @@ LLM 内容处理（Claude Haiku，批量 15 条/次，Prompt Cache）
 |------|------|
 | `published_at` 距今 ≤ 72h | 正常进入后续流程 |
 | `published_at` 距今 > 72h | 丢弃 |
-| `published_at = None` | 放行 |
+| `published_at = None` | 丢弃（无日期 = 无法保证时效性） |
 
 **72h 的理由：** 覆盖完整周末（周五晚→周一早约 60h），不会把历史存档混入日报。可通过 `.env` 中的 `MAX_AGE_HOURS` 调整。
+
+> `published_at=None` 早期文档标注为"放行"，现已修正——无日期的条目一律视为过时并丢弃，以防采集到无日期的旧文章进入系统。
 
 ---
 
@@ -280,19 +287,31 @@ LLM 内容处理（Claude Haiku，批量 15 条/次，Prompt Cache）
 
 实现：`eai_news/filters/deduplicator.py`
 
-### 两阶段去重
+### 三阶段去重
 
 **Stage 1：URL 哈希去重（跨批次）**
 
 `RawItem.id` 为 URL 的 MD5 哈希。每次采集前从数据库加载近 30 天的已有 ID 集合，命中则丢弃，防止同一文章重复入库。
 
-**Stage 2：标题模糊去重（批次内）**
+**Stage 2：标题模糊去重（批次内 + 跨批次历史）**
 
 解决同一事件被多个信源覆盖的问题。
 
-1. 按 tier 升序排列（tier 1 在前，一手来源优先）
-2. 对每条新内容，检查已接受列表中发布时间差 ≤ 48h 且标题归一化相似度 ≥ 70% 的条目
-3. 发现重复则丢弃 tier 更高的那条
+1. 从数据库加载近 3 天 `news_items` 的原始标题，作为比对种子（跨批次保护）
+2. 按 tier 升序排列当前批次（tier 1 在前，一手来源优先）
+3. 对每条新内容，检查种子列表 + 已接受列表中发布时间差 ≤ 48h 且标题归一化相似度 ≥ **45%** 的条目
+4. 发现重复则丢弃 tier 更高的那条
+
+> 阈值从 0.70 降为 0.45，以捕获措辞不同但主题相同的报道（如 "Mitsubishi Electric and Chiba Institute of Technology Launch…" vs "Mitsubishi Electric and Chiba Tech Forge 3-Year Pact…"）。
+
+**Stage 3：title_zh 跨语言去重（LLM 处理后）**
+
+LLM 将所有标题统一翻译为中文，消除语言差异后再做一轮去重：
+
+1. 从数据库加载近 3 天 `news_items.title_zh`
+2. 对当前批次已翻译的条目，计算 `title_zh` 归一化相似度（阈值 0.45，48h 窗口）
+3. 命中则丢弃，保留先入库的那条
+4. 主要捕获：英文 Embodied Global / Humanoids Daily 与中文 36氪 / 机器之心报道同一事件的情况
 
 ---
 
@@ -399,7 +418,7 @@ sim2real / 仿真 / dataset / 数据集 / deployment / deploy
 
 ### 实现细节
 
-- **批量处理**：15条/次 API 调用
+- **批量处理**：15条/次 API 调用，`max_tokens=4096`（低于此值会导致 batch 截断、tool_use 缺失）
 - **Prompt Cache**：系统 Prompt 标记 `cache_control: ephemeral`，同一周期内多批次复用
 - **Tool Use**：强制 `tool_choice: any`，保证结构化输出
 - **错误隔离**：单批次失败时条目原样保留，下次周期重试
@@ -434,6 +453,8 @@ sim2real / 仿真 / dataset / 数据集 / deployment / deploy
 python run.py --setup-feishu   # 首次初始化字段
 python run.py --process-only   # 对 DB 中 title_zh=None 的条目重新跑 LLM
 ```
+
+`FeishuTableStorage.delete_all_records()` 可批量清空表中所有记录（500条/次 batch_delete），用于测试阶段重置数据。
 
 通过 `.env` 中的 `STORAGE_BACKEND` 切换：`feishu`（默认）/ `excel` / `both`
 
