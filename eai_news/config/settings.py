@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     max_age_hours: int = 72        # 超过此时效或无发布时间的条目直接丢弃
 
     # 调度
-    collect_interval_hours: int = 2
+    collect_hour: int = 11          # 每天采集时刻（Asia/Shanghai）
     daily_publish_hour: int = 8
     tracker_hour: int = 23
 

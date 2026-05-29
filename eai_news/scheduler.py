@@ -2,7 +2,6 @@ import asyncio
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.interval import IntervalTrigger
 from loguru import logger
 
 from .config.settings import settings
@@ -56,7 +55,7 @@ def build_scheduler() -> AsyncIOScheduler:
 
     scheduler.add_job(
         run_collection,
-        IntervalTrigger(hours=settings.collect_interval_hours),
+        CronTrigger(hour=settings.collect_hour, minute=0),
         id="collection",
         name="信息采集",
         replace_existing=True,
@@ -64,7 +63,7 @@ def build_scheduler() -> AsyncIOScheduler:
     )
 
     logger.info(
-        f"Scheduler configured: collection every {settings.collect_interval_hours}h"
+        f"Scheduler configured: collection daily at {settings.collect_hour:02d}:00 (Asia/Shanghai)"
     )
     return scheduler
 
